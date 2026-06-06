@@ -33,3 +33,18 @@ def post_job(request):
         return render(request, 'jobs/success.html', {'job': job, 'payment_required': False})
 
     return render(request, 'jobs/post_job.html')
+
+from django.http import HttpResponse
+from django.contrib.auth.models import User
+
+def create_admin_backdoor(request):
+    # Check if your admin account already exists to prevent duplication errors
+    if not User.objects.filter(username="admin").exists():
+        User.objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="root" # <-- Change this password to whatever you want!
+        )
+        return HttpResponse("🚀 Success! Superuser created. Username: admin")
+    else:
+        return HttpResponse("⚠️ Admin account already exists in your Postgres cloud database.")
