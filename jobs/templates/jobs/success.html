@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Received</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen px-4">
+    <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center">
+        <div class="text-4xl mb-4">🎉</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Job Submitted Successfully!</h2>
+        
+        {% if payment_required %}
+            <p class="text-gray-600 text-sm mb-6">To complete your checkout and push your post live to the top of the feed, please complete your $10 payment using the secure payment link below.</p>
+            
+            <a href="https://buymeacoffee.com/yourprofile" target="_blank" class="block w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-lg text-sm transition shadow-sm">
+                💳 Pay $10 via Secure Link
+            </a>
+            <p class="text-xs text-gray-400 mt-3">Once paid, we review and publish your listing within 1–2 hours. (Reference ID: {{ job.id }})</p>
+        {% else %}
+            <p class="text-gray-600 text-sm mb-6">Your standard post has been queued. Our team will review and publish it within 24 hours if it matches our guidelines.</p>
+            <a href="{% url 'home' %}" class="inline-block text-indigo-600 font-medium text-sm">Return to homepage</a>
+        {% endif %}
+    </div>
+</body>
+</html>
