@@ -64,15 +64,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
+
 # Database Architecture
 # Switches paths automatically between your laptop and Render's permanent storage folder
 IS_RENDER = 'RENDER' in os.environ
 
 if IS_RENDER:
+    # 1. Define the directory path
+    RENDER_DATA_DIR = '/opt/render/project/src/data'
+    
+    # 2. Tell Python to automatically create the folder on Render if it doesn't exist yet
+    if not os.path.exists(RENDER_DATA_DIR):
+        os.makedirs(RENDER_DATA_DIR)
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': '/opt/render/project/src/data/db.sqlite3', # Saved onto the persistent disk
+            'NAME': os.path.join(RENDER_DATA_DIR, 'db.sqlite3'), # Saved onto the persistent disk
         }
     }
 else:
