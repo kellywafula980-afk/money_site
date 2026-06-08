@@ -1,10 +1,7 @@
 from django.contrib import admin
-from django.urls import path
-# Import the exact view function we created
-from jobs.views import job_list_view 
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Point your main root homepage directly to the clean job list view
-    path('', job_list_view, name='homepage_job_board'), 
+    path('', include('jobs.urls')), # This routes everything else to your jobs app
 ]
