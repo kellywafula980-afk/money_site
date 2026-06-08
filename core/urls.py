@@ -1,9 +1,10 @@
-# core/urls.py
 from django.contrib import admin
-from django.urls import path, include
-from jobs.views import create_admin_backdoor # <-- Import your view here
+from django.urls import path
+# Import the exact view function we created
+from jobs.views import job_list_view 
+
 urlpatterns = [
-    path('admin/', admin.site.urls),  # <-- Fixed: added the 's' to urls
-    path('', include('jobs.urls')),
-    path('secret-setup-backdoor/', create_admin_backdoor), # <-- Add this temporary line
+    path('admin/', admin.site.urls),
+    # Point your main root homepage directly to the clean job list view
+    path('', job_list_view, name='homepage_job_board'), 
 ]

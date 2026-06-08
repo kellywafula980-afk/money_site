@@ -1,50 +1,36 @@
-# jobs/views.py
-from django.shortcuts import render, redirect
+from django.shortcuts import render
+from django.db.models import Q
 from .models import JobListing
 
-def home(request):
-    jobs = JobListing.objects.filter(is_approved=True).order_by('-is_featured', '-created_at')
-    return render(request, 'jobs/home.html', {'jobs': jobs})
-
-def post_job(request):
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        company_name = request.POST.get('company_name')
-        company_website = request.POST.get('company_website')
-        apply_url = request.POST.get('apply_url')
-        description = request.POST.get('description')
-        upgrade_featured = request.POST.get('upgrade_featured') # Will be 'on' if checked
-
-        # Save to database
-        job = JobListing.objects.create(
-            title=title,
-            company_name=company_name,
-            company_website=company_website,
-            apply_url=apply_url,
-            description=description,
-            is_approved=False, # We approve manually after verification/payment
-            is_featured=True if upgrade_featured == 'on' else False
+def job_list_view(request):
+    """
+    Renders the live job stream and enforces strict, high-intent keyword matching.
+    Prevents boilerplate description texts from hijacking and breaking user queries.
+    """
+    # Grab the 'search' parameter passed from the front-end template form
+    query = request.GET.get('search', '').strip()
+    
+    # Fetch all job listings ordered by descending primary key IDs (Latest First)
+    jobs = JobListing.objects.all().order_by('-id')
+    
+    if query:
+        # Aggressive Title, Company, and Location matching.
+        # This keeps search intent highly precise and filters out out-of-context listings.
+        jobs = jobs.filter(
+            Q(title__icontains=query) | 
+            Q(company_name__icontains=query) |
+            Q(location__icontains=query)
         )
-
-        if upgrade_featured == 'on':
-            # Redirect them to our zero-cost checkout layout
-            return render(request, 'jobs/success.html', {'job': job, 'payment_required': True})
         
-        return render(request, 'jobs/success.html', {'job': job, 'payment_required': False})
+    context = {
+        'jobs': jobs,
+        'search_query': query,  # Sent back to maintain the value inside the search bar element
+    }
+    
+    # Render explicitly down into your home.html layout mapping
+    return render(request, 'jobs/home.html', context)
 
-    return render(request, 'jobs/post_job.html')
-
-from django.http import HttpResponse
-from django.contrib.auth.models import User
-
-def create_admin_backdoor(request):
-    # Check if your admin account already exists to prevent duplication errors
-    if not User.objects.filter(username="admin").exists():
-        User.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="root" # <-- Change this password to whatever you want!
-        )
-        return HttpResponse("🚀 Success! Superuser created. Username: admin")
-    else:
-        return HttpResponse("⚠️ Admin account already exists in your Postgres cloud database.")
+# 🔗 Explicit URL Routing Aliases
+# Automatically maps your project's core/urls.py legacy path definitions directly here
+homepage_job_board = job_list_view
+content_batcher_dashboard = job_list_view

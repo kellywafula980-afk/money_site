@@ -1,20 +1,50 @@
-# Create your models here.
-# jobs/models.py
 from django.db import models
 
+class ScriptBatch(models.Model):
+    TONE_CHOICES = [
+        ('viral', 'Viral Hook/Aggressive'),
+        ('story', 'Deep Storytelling'),
+        ('brainrot', 'Gen-Z / Brainrot'),
+        ('educational', 'Informative/Educational'),
+    ]
+    topic = models.CharField(max_length=255)
+    tone = models.CharField(max_length=50, choices=TONE_CHOICES, default='viral')
+    raw_response = models.TextField()
+    audio_url = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Batch for {self.topic} ({self.get_tone_display()})"
+
+
+class EmailCampaign(models.Model):
+    user_network = models.CharField(max_length=100, default="Global")
+    service_offered = models.CharField(max_length=255)
+    target_industry = models.CharField(max_length=255)
+    generated_pitch = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.service_offered} targeting {self.target_industry}"
+
+
+
+    
+    
 class JobListing(models.Model):
-    title = models.CharField(max_length=200)
-    company_name = models.CharField(max_length=200)
-    company_website = models.URLField(blank=True, null=True)
+    title = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
     description = models.TextField()
     location = models.CharField(max_length=100, default="Remote")
-    apply_url = models.URLField()
+    apply_url = models.URLField(max_length=500, unique=True)
     
-    # The Money Makers
-    is_approved = models.BooleanField(default=False) # We approve it via admin panel before it goes live
-    is_featured = models.BooleanField(default=False) # Companies pay extra to turn this True!
+    # 💰 MONETIZATION FIELDS
+    is_approved = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False) # Highlights the job row
+    is_premium = models.BooleanField(default=False)  # Premium pinned post
+    salary_range = models.CharField(max_length=100, blank=True, null=True, default="$40,000 - $80,000")
     
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} at {self.company_name}"
+        return f"{self.title} at {self.company_name}"  
