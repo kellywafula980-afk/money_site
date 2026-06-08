@@ -76,7 +76,7 @@ def scale_database_to_thousands():
     offset = 0
     limit = 50
     
-    while added_count < 1500: # Cap at a safe buffer to match your goal
+    while added_count < 150: # Cap at a safe buffer to match your goal
         himalayas_url = f"https://himalayas.app/jobs/api?limit={limit}&offset={offset}"
         try:
             res = requests.get(himalayas_url, headers=headers, timeout=10)
