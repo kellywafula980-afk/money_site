@@ -52,12 +52,21 @@ class JobListing(models.Model):
 class JobListing(models.Model):
     title = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255)
-    # ... (rest of your fields) ...
+    description = models.TextField()
+    location = models.CharField(max_length=100, default="Remote")
+    apply_url = models.URLField(max_length=500, unique=True)
+    
+    # 💰 MONETIZATION FIELDS
+    is_approved = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False) 
+    is_premium = models.BooleanField(default=False)  
+    salary_range = models.CharField(max_length=100, blank=True, null=True, default="$40,000 - $80,000")
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.title} at {self.company_name}"  
     
-    # 🚀 Move this INSIDE the class by indenting it:
+    # 🚀 KEEP THIS INDENTED AT THE VERY END:
     def get_absolute_url(self):
         return f'/jobs/{self.id}/'
