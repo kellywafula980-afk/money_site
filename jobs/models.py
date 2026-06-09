@@ -49,7 +49,15 @@ class JobListing(models.Model):
     def __str__(self):
         return f"{self.title} at {self.company_name}"  
     
+class JobListing(models.Model):
+    title = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
+    # ... (rest of your fields) ...
+    created_at = models.DateTimeField(auto_now_add=True)
 
-def get_absolute_url(self):
-    # Returns the relative link structure to view a single job details page
-    return f'/jobs/{self.id}/'  # Adjust path to match your actual jobs detail URL route  
+    def __str__(self):
+        return f"{self.title} at {self.company_name}"  
+    
+    # 🚀 Move this INSIDE the class by indenting it:
+    def get_absolute_url(self):
+        return f'/jobs/{self.id}/'
