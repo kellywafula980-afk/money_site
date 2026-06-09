@@ -48,3 +48,8 @@ class JobListing(models.Model):
 
     def __str__(self):
         return f"{self.title} at {self.company_name}"  
+    
+
+def get_absolute_url(self):
+    # Returns the relative link structure to view a single job details page
+    return f'/jobs/{self.id}/'  # Adjust path to match your actual jobs detail URL route  
