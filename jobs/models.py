@@ -28,9 +28,6 @@ class EmailCampaign(models.Model):
         return f"{self.service_offered} targeting {self.target_industry}"
 
 
-
-    
-    
 class JobListing(models.Model):
     title = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255)
@@ -40,33 +37,27 @@ class JobListing(models.Model):
     
     # 💰 MONETIZATION FIELDS
     is_approved = models.BooleanField(default=True)
-    is_featured = models.BooleanField(default=False) # Highlights the job row
-    is_premium = models.BooleanField(default=False)  # Premium pinned post
+    is_featured = models.BooleanField(default=False)
+    is_premium = models.BooleanField(default=False)
     salary_range = models.CharField(max_length=100, blank=True, null=True, default="$40,000 - $80,000")
     
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} at {self.company_name}"  
-    
-class JobListing(models.Model):
-    title = models.CharField(max_length=255)
-    company_name = models.CharField(max_length=255)
-    description = models.TextField()
-    location = models.CharField(max_length=100, default="Remote")
-    apply_url = models.URLField(max_length=500, unique=True)
-    
-    # 💰 MONETIZATION FIELDS
-    is_approved = models.BooleanField(default=True)
-    is_featured = models.BooleanField(default=False) 
-    is_premium = models.BooleanField(default=False)  
-    salary_range = models.CharField(max_length=100, blank=True, null=True, default="$40,000 - $80,000")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
+        return f"{self.title} at {self.company_name}"
 
-    def __str__(self):
-        return f"{self.title} at {self.company_name}"  
-    
-    # 🚀 KEEP THIS INDENTED AT THE VERY END:
     def get_absolute_url(self):
         return f'/jobs/{self.id}/'
+
+
+# Add any other models you had below this line
+# For example, if you had more models like:
+#
+# class Contact(models.Model):
+#     name = models.CharField(max_length=100)
+#     email = models.EmailField()
+#     message = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+#
+#     def __str__(self):
+#         return self.name

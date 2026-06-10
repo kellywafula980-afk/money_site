@@ -1,5 +1,5 @@
 from django.contrib.sitemaps import Sitemap
-# 🚀 Change this to JobListing
+from django.urls import reverse
 from .models import JobListing  
 
 class JobSitemap(Sitemap):
@@ -7,5 +7,8 @@ class JobSitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        # 🚀 Change this to JobListing
         return JobListing.objects.all().order_by('-id')
+
+    # 🚀 ADD THIS METHOD - it tells Django how to build the URL for each job
+    def location(self, obj):
+        return f'/jobs/{obj.id}/'
