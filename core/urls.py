@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.contrib.sitemaps.views import sitemap
 from django.http import HttpResponse
+from jobs.views import debug_jobs
 
 # Try/except to handle the import gracefully
 try:
@@ -49,6 +50,7 @@ urlpatterns = [
     path('', include('jobs.urls')),
     path('ads.txt', TemplateView.as_view(template_name='jobs/ads.txt', content_type='text/plain')),
     path('google56bce93523ece129.html', TemplateView.as_view(template_name='jobs/google56bce93523ece129.html', content_type='text/html')),
-    
+    path('debug/', debug_jobs, name='debug'),
+
     path('sitemap.xml', sitemap_with_headers, name='sitemap'),
 ]

@@ -50,3 +50,30 @@ def secret_trigger_scraper(request):
         return HttpResponse("🚀 Database successfully scaled to 1,000+ live jobs!", status=200)
     except Exception as e:
         return HttpResponse(f"⚠️ Error running scraper: {str(e)}", status=500)
+from django.http import HttpResponse
+from .models import JobListing
+
+def debug_jobs(request):
+    """Shows how many jobs are in the database"""
+    count = JobListing.objects.count()
+    first_job = JobListing.objects.first()
+    
+    output = f"""
+    <h1>Database Debug</h1>
+    <p>Total JobListing objects: <strong>{count}</strong></p>
+    """
+    
+    if first_job:
+        output += f"""
+        <h2>First Job:</h2>
+        <ul>
+            <li>ID: {first_job.id}</li>
+            <li>Title: {first_job.title}</li>
+            <li>Company: {first_job.company_name}</li>
+            <li>Created: {first_job.created_at}</li>
+        </ul>
+        """
+    else:
+        output += "<p>⚠️ No jobs found in JobListing table!</p>"
+    
+    return HttpResponse(output)
