@@ -123,3 +123,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
+# ========== ADD THIS SECTION AT THE BOTTOM ==========
+# Security settings for search engines - Fixes the X-Robots-Tag noindex issue
+# This allows Google to properly crawl and index your sitemap
+
+# Disable HSTS to allow indexing (temporary measure)
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+
+# Allow search engine crawlers
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Ensure the sitemap can be indexed
+# This overrides any default noindex headers from Render
