@@ -101,3 +101,11 @@ def generate_sitemap(request):
     
     xml += '</urlset>'
     return HttpResponse(xml, content_type='application/xml')
+
+
+from django.shortcuts import get_object_or_404
+
+def job_detail_view(request, job_id):
+    """Display a single job listing"""
+    job = get_object_or_404(JobListing, id=job_id)
+    return render(request, 'jobs/job_detail.html', {'job': job})
