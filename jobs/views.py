@@ -50,8 +50,6 @@ def secret_trigger_scraper(request):
         return HttpResponse("🚀 Database successfully scaled to 1,000+ live jobs!", status=200)
     except Exception as e:
         return HttpResponse(f"⚠️ Error running scraper: {str(e)}", status=500)
-from django.http import HttpResponse
-from .models import JobListing
 
 def debug_jobs(request):
     """Shows how many jobs are in the database"""
@@ -77,3 +75,29 @@ def debug_jobs(request):
         output += "<p>⚠️ No jobs found in JobListing table!</p>"
     
     return HttpResponse(output)
+
+# 🚀 ADD THIS FUNCTION - Direct sitemap generator that shows ALL jobs
+def generate_sitemap(request):
+    """Direct sitemap generator - bypasses Django's sitemap framework and shows ALL jobs"""
+    jobs = JobListing.objects.all()
+    
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    
+    # Add homepage
+    xml += '''<url>
+<loc>https://globalgigs-0096.onrender.com/</loc>
+<changefreq>daily</changefreq>
+<priority>1.0</priority>
+</url>\n'''
+    
+    # Add each job
+    for job in jobs:
+        xml += f'''<url>
+<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
+<changefreq>daily</changefreq>
+<priority>0.8</priority>
+</url>\n'''
+    
+    xml += '</urlset>'
+    return HttpResponse(xml, content_type='application/xml')
