@@ -3,8 +3,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.contrib.sitemaps.views import sitemap
 from django.http import HttpResponse
-from jobs.views import debug_jobs, generate_sitemap  # Add generate_sitemap here
-from jobs.views import debug_jobs, generate_sitemap  # ADD generate_sitemap here
+from jobs.views import debug_jobs, generate_sitemap  # Only need this once
 
 # Try/except to handle the import gracefully
 try:
@@ -54,6 +53,6 @@ urlpatterns = [
     path('debug/', debug_jobs, name='debug'),
 
     # Sitemap URLs
-    path('sitemap.xml', sitemap_with_headers, name='sitemap'),
-    path('sitemap-new.xml', generate_sitemap, name='sitemap_new'),  # ADD THIS LINE
+    path('sitemap.xml', generate_sitemap, name='sitemap'),
+    path('sitemap-new.xml', generate_sitemap, name='sitemap_new'),
 ]
