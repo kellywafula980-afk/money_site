@@ -10,6 +10,9 @@
     
     <!-- Tailwind CSS CDN for modern design structures -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <a href="{% url 'post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-3 py-1 rounded-lg font-bold transition">
+    Post Job
+</a>
 </head>
 <body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
 
@@ -80,24 +83,16 @@
         <div class="space-y-4">
             {% for job in jobs %}
                 
-                <!-- Pure Job Card Component -->
-                <div class="p-6 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900 transition duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <!-- 🚀 CLICKABLE JOB TITLE - This is the fix! -->
-                        <a href="/jobs/{{ job.id }}/" class="block">
-                            <h3 class="text-lg font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition cursor-pointer">
-                                {{ job.title }}
-                            </h3>
-                        </a>
-                        <p class="text-zinc-400 font-medium text-sm mt-1">
-                            🏢 {{ job.company_name }} <span class="text-zinc-600 mx-1.5">•</span> 📍 {{ job.location }}
-                        </p>
-                    </div>
-                    <div>
-                        <a href="{{ job.apply_url }}" target="_blank" class="w-full md:w-auto text-center inline-block px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-200 font-bold rounded-xl transition duration-150 border border-zinc-700 hover:border-emerald-500 text-sm whitespace-nowrap">
-                            Apply Job ⚡
-                        </a>
-                    </div>
+                <!-- Pure Job Card Component - NO Apply Button -->
+                <div class="p-6 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900 transition duration-200">
+                    <a href="/jobs/{{ job.id }}/" class="block">
+                        <h3 class="text-lg font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition cursor-pointer">
+                            {{ job.title }}
+                        </h3>
+                    </a>
+                    <p class="text-zinc-400 font-medium text-sm mt-1">
+                        🏢 {{ job.company_name }} <span class="text-zinc-600 mx-1.5">•</span> 📍 {{ job.location }}
+                    </p>
                 </div>
 
                 <!-- 💰 PROGRAMMATIC AD SLOT INJECTIONS -->

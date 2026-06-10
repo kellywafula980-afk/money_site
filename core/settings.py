@@ -65,58 +65,42 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-
 # Database Architecture
 # Switches paths automatically between your laptop and Render's permanent storage folder
 IS_RENDER = 'RENDER' in os.environ
 
 if IS_RENDER:
-    # 1. Define the directory path
     RENDER_DATA_DIR = '/opt/render/project/src/data'
-    
-    # 2. Tell Python to automatically create the folder on Render if it doesn't exist yet
     if not os.path.exists(RENDER_DATA_DIR):
         os.makedirs(RENDER_DATA_DIR)
-
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(RENDER_DATA_DIR, 'db.sqlite3'), # Saved onto the persistent disk
+            'NAME': os.path.join(RENDER_DATA_DIR, 'db.sqlite3'),
         }
     }
 else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3', # Saved on your laptop local folder
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -125,17 +109,22 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
-# ========== ADD THIS SECTION AT THE BOTTOM ==========
-# Security settings for search engines - Fixes the X-Robots-Tag noindex issue
-# This allows Google to properly crawl and index your sitemap
-
-# Disable HSTS to allow indexing (temporary measure)
+# ========== SECURITY & SEARCH ENGINE SETTINGS ==========
 SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
-
-# Allow search engine crawlers
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-# Ensure the sitemap can be indexed
-# This overrides any default noindex headers from Render
+
+# ========== MEDIA FILES (for uploaded resumes) ==========
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# ========== STRIPE PAYMENT CONFIGURATION ==========
+import stripe
+
+STRIPE_PUBLISHABLE_KEY = 'pk_test_51TgqGJ3ZWEv9la6sKxyela76C2qszvTYa5bHZ2ebLLrybuzGhG6tI3iS3pV3616LfD69fAp25Gw9a3A14amfs0FP00HbbZK4Gv'
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+
+stripe.api_key = STRIPE_SECRET_KEY

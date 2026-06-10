@@ -41,6 +41,11 @@ class JobListing(models.Model):
     is_premium = models.BooleanField(default=False)
     salary_range = models.CharField(max_length=100, blank=True, null=True, default="$40,000 - $80,000")
     
+    # 🚀 NEW FIELDS FOR ON-SITE APPLICATIONS
+    accept_onsite_applications = models.BooleanField(default=True)
+    application_email = models.EmailField(blank=True, null=True)
+    application_instructions = models.TextField(blank=True, null=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -50,14 +55,16 @@ class JobListing(models.Model):
         return f'/jobs/{self.id}/'
 
 
-# Add any other models you had below this line
-# For example, if you had more models like:
-#
-# class Contact(models.Model):
-#     name = models.CharField(max_length=100)
-#     email = models.EmailField()
-#     message = models.TextField()
-#     created_at = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return self.name
+class JobApplication(models.Model):
+    job = models.ForeignKey(JobListing, on_delete=models.CASCADE, related_name='applications')
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True)
+    cover_letter = models.TextField()
+    resume = models.FileField(upload_to='resumes/', blank=True, null=True)
+    portfolio_url = models.URLField(blank=True, null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    is_reviewed = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"{self.full_name} - {self.job.title}"

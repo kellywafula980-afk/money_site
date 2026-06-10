@@ -4,7 +4,7 @@ from django.views.generic import TemplateView
 from django.contrib.sitemaps.views import sitemap
 from django.http import HttpResponse
 from jobs.views import debug_jobs, generate_sitemap  # Only need this once
-
+from jobs.views import post_job_page, create_checkout_session, payment_success, payment_cancel
 # Try/except to handle the import gracefully
 try:
     from jobs.sitemaps import JobSitemap
@@ -52,7 +52,18 @@ urlpatterns = [
     path('google56bce93523ece129.html', TemplateView.as_view(template_name='jobs/google56bce93523ece129.html', content_type='text/html')),
     path('debug/', debug_jobs, name='debug'),
 
+    path('post-job/', post_job_page, name='post_job'),
+    path('create-checkout/', create_checkout_session, name='create_checkout'),
+    path('payment-success/', payment_success, name='payment_success'),
+    path('payment-cancel/', payment_cancel, name='payment_cancel'),
     # Sitemap URLs
     path('sitemap.xml', generate_sitemap, name='sitemap'),
     path('sitemap-new.xml', generate_sitemap, name='sitemap_new'),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+# Add this after your urlpatterns
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
