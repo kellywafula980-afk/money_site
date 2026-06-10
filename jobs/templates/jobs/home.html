@@ -83,9 +83,12 @@
                 <!-- Pure Job Card Component -->
                 <div class="p-6 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900 transition duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h3 class="text-lg font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition cursor-pointer">
-                            {{ job.title }}
-                        </h3>
+                        <!-- 🚀 CLICKABLE JOB TITLE - This is the fix! -->
+                        <a href="/jobs/{{ job.id }}/" class="block">
+                            <h3 class="text-lg font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition cursor-pointer">
+                                {{ job.title }}
+                            </h3>
+                        </a>
                         <p class="text-zinc-400 font-medium text-sm mt-1">
                             🏢 {{ job.company_name }} <span class="text-zinc-600 mx-1.5">•</span> 📍 {{ job.location }}
                         </p>
