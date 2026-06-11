@@ -203,3 +203,10 @@ def payment_success(request):
 def payment_cancel(request):
     """Handle cancelled payment"""
     return render(request, 'jobs/payment_cancel.html')
+def robots_txt(request):
+    from django.http import HttpResponse
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
+    return HttpResponse(content, content_type='text/plain')
