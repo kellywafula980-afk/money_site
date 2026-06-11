@@ -1,0 +1,38 @@
+name: Daily Job Scraper
+
+on:
+  schedule:
+    # Runs every day at 12:00 UTC (3 PM EAT)
+    - cron: '0 12 * * *'
+  # Allows manual trigger from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  scrape-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger job scraper on Render
+        run: |
+          echo "🚀 Starting job scraper..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" "https://globalgigs-0096.onrender.com/run-production-sync/?key=candy2026")
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Job scraper completed successfully!"
+          else
+            echo "❌ Job scraper failed with status $HTTP_STATUS"
+            exit 1
+          fi
+      
+      - name: Wait for database update
+        run: sleep 10
+      
+      - name: Verify sitemap updates
+        run: |
+          echo "🔍 Checking sitemap..."
+          SITEMAP_COUNT=$(curl -s "https://globalgigs-0096.onrender.com/sitemap.xml" | grep -o "<loc>" | wc -l)
+          echo "📊 Total URLs in sitemap: $SITEMAP_COUNT"
