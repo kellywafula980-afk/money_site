@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml
