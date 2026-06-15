@@ -4,3 +4,4 @@ urllib3>=2.0.0
 whitenoise>=6.0.0,<7.0.0
 gunicorn>=22.0.0
 stripe>=9.0
+paystackapi>=2.0.0

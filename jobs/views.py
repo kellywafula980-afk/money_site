@@ -1,24 +1,25 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q
 from django.http import HttpResponse
-from .models import JobListing
-from .forms import JobApplicationForm
+from django.urls import reverse
+from django.conf import settings
+from django.contrib import messages
+import requests
+from .models import JobListing, JobApplication
+from .forms import JobApplicationForm, JobPostForm
 from .scraper import scale_database_to_thousands
 
+
+# ============================================================
+# HOMEPAGE & JOB LISTINGS
+# ============================================================
+
 def job_list_view(request):
-    """
-    Renders the live job stream and enforces strict, high-intent keyword matching.
-    Prevents boilerplate description texts from hijacking and breaking user queries.
-    """
-    # Grab the 'search' parameter passed from the front-end template form
+    """Renders the live job stream with search functionality"""
     query = request.GET.get('search', '').strip()
-    
-    # Fetch all job listings ordered by descending primary key IDs (Latest First)
     jobs = JobListing.objects.all().order_by('-id')
     
     if query:
-        # Aggressive Title, Company, and Location matching.
-        # This keeps search intent highly precise and filters out out-of-context listings.
         jobs = jobs.filter(
             Q(title__icontains=query) | 
             Q(company_name__icontains=query) |
@@ -27,20 +28,46 @@ def job_list_view(request):
         
     context = {
         'jobs': jobs,
-        'search_query': query,  # Sent back to maintain the value inside the search bar element
+        'search_query': query,
     }
     
-    # Render explicitly down into your home.html layout mapping
     return render(request, 'jobs/home.html', context)
 
-# 🔗 Explicit URL Routing Aliases
-# Automatically maps your project's core/urls.py legacy path definitions directly here
+
+# URL Aliases
 homepage_job_board = job_list_view
 content_batcher_dashboard = job_list_view
 
+
+# ============================================================
+# JOB DETAIL & APPLICATIONS
+# ============================================================
+
+def job_detail_view(request, job_id):
+    """Display a single job listing with application form"""
+    job = get_object_or_404(JobListing, id=job_id)
+    
+    if request.method == 'POST':
+        application = JobApplication(
+            job=job,
+            full_name=request.POST.get('full_name'),
+            email=request.POST.get('email'),
+            phone=request.POST.get('phone', ''),
+            cover_letter=request.POST.get('cover_letter'),
+            portfolio_url=request.POST.get('portfolio_url', '')
+        )
+        application.save()
+        return render(request, 'jobs/application_success.html', {'job': job})
+    
+    return render(request, 'jobs/job_detail.html', {'job': job})
+
+
+# ============================================================
+# SCRAPER & DEBUG
+# ============================================================
+
 def secret_trigger_scraper(request):
-    """A secure, browser-accessible endpoint to populate the live production database."""
-    # Simple security key check so random users can't trigger it
+    """Secure endpoint to populate the live production database"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized access.", status=403)
@@ -50,6 +77,7 @@ def secret_trigger_scraper(request):
         return HttpResponse("🚀 Database successfully scaled to 1,000+ live jobs!", status=200)
     except Exception as e:
         return HttpResponse(f"⚠️ Error running scraper: {str(e)}", status=500)
+
 
 def debug_jobs(request):
     """Shows how many jobs are in the database"""
@@ -76,74 +104,49 @@ def debug_jobs(request):
     
     return HttpResponse(output)
 
+
+# ============================================================
+# SITEMAP & ROBOTS
+# ============================================================
+
 def generate_sitemap(request):
-    """Direct sitemap generator - bypasses Django's sitemap framework and shows ALL jobs"""
+    """Dynamic sitemap - always shows current jobs"""
     jobs = JobListing.objects.all()
     
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     
     # Add homepage
-    xml += '''<url>
-<loc>https://globalgigs-0096.onrender.com/</loc>
-<changefreq>daily</changefreq>
-<priority>1.0</priority>
-</url>\n'''
+    xml += '<url>\n<loc>https://globalgigs-0096.onrender.com/</loc>\n<changefreq>daily</changefreq>\n<priority>1.0</priority>\n</url>\n'
     
     # Add each job
     for job in jobs:
-        xml += f'''<url>
-<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
-<changefreq>daily</changefreq>
-<priority>0.8</priority>
-</url>\n'''
+        xml += f'<url>\n<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>\n<changefreq>daily</changefreq>\n<priority>0.8</priority>\n</url>\n'
     
     xml += '</urlset>'
     return HttpResponse(xml, content_type='application/xml')
 
-def job_detail_view(request, job_id):
-    """Display a single job listing with application form"""
-    from django.shortcuts import get_object_or_404, render
-    from .models import JobListing, JobApplication
-    
-    job = get_object_or_404(JobListing, id=job_id)
-    
-    if request.method == 'POST':
-        # Save to database
-        application = JobApplication(
-            job=job,
-            full_name=request.POST.get('full_name'),
-            email=request.POST.get('email'),
-            phone=request.POST.get('phone', ''),
-            cover_letter=request.POST.get('cover_letter'),
-            portfolio_url=request.POST.get('portfolio_url', '')
-        )
-        application.save()
-        
-        # Show success page using template
-        return render(request, 'jobs/application_success.html', {'job': job})
-    
-    return render(request, 'jobs/job_detail.html', {'job': job})
+
+def robots_txt(request):
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
+    return HttpResponse(content, content_type='text/plain')
 
 
-import stripe
-from django.conf import settings
-from django.shortcuts import redirect
-from django.urls import reverse
-from .forms import JobPostForm
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
+# ============================================================
+# PAYMENT & JOB POSTING (PAYSTACK)
+# ============================================================
 
 def post_job_page(request):
     """Page where employers can post a job"""
     form = JobPostForm()
-    return render(request, 'jobs/post_job.html', {
-        'form': form,
-        'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY
-    })
+    return render(request, 'jobs/post_job.html', {'form': form})
 
-def create_checkout_session(request):
-    """Creates Stripe checkout session for job posting"""
+
+def initiate_payment(request):
+    """Initialize Paystack payment for job posting"""
     if request.method == 'POST':
         form = JobPostForm(request.POST)
         if form.is_valid():
@@ -156,77 +159,84 @@ def create_checkout_session(request):
                 'salary_range': form.cleaned_data['salary_range'],
             }
             
-            # Create Stripe checkout session
+            # Initialize Paystack payment
+            headers = {
+                'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+                'Content-Type': 'application/json',
+            }
+            
+            data = {
+                'email': request.POST.get('email'),
+                'amount': 4900 * 100,  # $49 in cents (Paystack uses kobo/cent)
+                'currency': 'KES',  # Kenyan Shillings
+                'callback_url': request.build_absolute_uri(reverse('payment_callback')),
+                'metadata': {
+                    'job_title': form.cleaned_data['title'],
+                    'company': form.cleaned_data['company_name'],
+                }
+            }
+            
             try:
-                checkout_session = stripe.checkout.Session.create(
-                    payment_method_types=['card'],
-                    line_items=[
-                        {
-                            'price_data': {
-                                'currency': 'usd',
-                                'unit_amount': 4900,  # $49.00
-                                'product_data': {
-                                    'name': 'Job Posting - 30 Days',
-                                    'description': 'Post your job for 30 days on GlobalGigs',
-                                },
-                            },
-                            'quantity': 1,
-                        },
-                    ],
-                    mode='payment',
-                    success_url=request.build_absolute_uri(reverse('payment_success')),
-                    cancel_url=request.build_absolute_uri(reverse('payment_cancel')),
+                response = requests.post(
+                    'https://api.paystack.co/transaction/initialize',
+                    headers=headers,
+                    json=data,
+                    timeout=30
                 )
-                return redirect(checkout_session.url)
+                response_data = response.json()
+                
+                if response_data.get('status'):
+                    # Redirect to Paystack payment page
+                    return redirect(response_data['data']['authorization_url'])
+                else:
+                    messages.error(request, f"Payment initialization failed: {response_data.get('message')}")
             except Exception as e:
-                return HttpResponse(f"Error creating checkout: {e}")
+                messages.error(request, f"Error: {str(e)}")
+    
     return redirect('post_job')
 
-def payment_success(request):
-    """Handle successful payment and save job"""
-    pending_job = request.session.get('pending_job')
-    if pending_job:
-        job = JobListing.objects.create(
-            title=pending_job['title'],
-            company_name=pending_job['company_name'],
-            description=pending_job['description'],
-            location=pending_job['location'],
-            salary_range=pending_job['salary_range'],
-            apply_url='#',  # Placeholder, employer can update
-            is_approved=True,
-            is_featured=True,  # Featured for paid jobs
+
+def payment_callback(request):
+    """Handle Paystack payment callback"""
+    reference = request.GET.get('reference')
+    
+    if not reference:
+        messages.error(request, "No payment reference found")
+        return redirect('post_job')
+    
+    # Verify payment with Paystack
+    headers = {
+        'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+    }
+    
+    try:
+        response = requests.get(
+            f'https://api.paystack.co/transaction/verify/{reference}',
+            headers=headers,
+            timeout=30
         )
-        del request.session['pending_job']
-        return render(request, 'jobs/payment_success.html', {'job': job})
-    return redirect('home')
-
-def payment_cancel(request):
-    """Handle cancelled payment"""
-    return render(request, 'jobs/payment_cancel.html')
-def robots_txt(request):
-    from django.http import HttpResponse
-    content = """User-agent: *
-Allow: /
-
-Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
-    return HttpResponse(content, content_type='text/plain')
-
-def generate_sitemap(request):
-    """Dynamic sitemap - always shows current jobs"""
-    from django.http import HttpResponse
-    from .models import JobListing
+        response_data = response.json()
+        
+        if response_data.get('status') and response_data['data']['status'] == 'success':
+            # Payment successful - save the job
+            pending_job = request.session.get('pending_job')
+            if pending_job:
+                job = JobListing.objects.create(
+                    title=pending_job['title'],
+                    company_name=pending_job['company_name'],
+                    description=pending_job['description'],
+                    location=pending_job['location'],
+                    salary_range=pending_job['salary_range'],
+                    apply_url='#',
+                    is_approved=True,
+                    is_featured=True,
+                )
+                del request.session['pending_job']
+                messages.success(request, f'✅ Payment successful! Your job "{job.title}" is now live!')
+                return redirect('job_detail', job_id=job.id)
+        else:
+            messages.error(request, f"Payment verification failed: {response_data.get('message')}")
+    except Exception as e:
+        messages.error(request, f"Error verifying payment: {str(e)}")
     
-    jobs = JobListing.objects.all()
-    
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    
-    # Add homepage
-    xml += '<url>\n<loc>https://globalgigs-0096.onrender.com/</loc>\n<changefreq>daily</changefreq>\n<priority>1.0</priority>\n</url>\n'
-    
-    # Add each job (always current)
-    for job in jobs:
-        xml += f'<url>\n<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>\n<changefreq>daily</changefreq>\n<priority>0.8</priority>\n</url>\n'
-    
-    xml += '</urlset>'
-    return HttpResponse(xml, content_type='application/xml')
+    return redirect('post_job')

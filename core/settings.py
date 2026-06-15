@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-47!tq+2e5$)r_66=^@-ne80bm$o!dntn$ugnx9-$m%1a1x(jcc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -121,10 +121,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
-# ========== STRIPE PAYMENT CONFIGURATION ==========
-import stripe
-
-STRIPE_PUBLISHABLE_KEY = 'pk_test_51TgqGJ3ZWEv9la6sKxyela76C2qszvTYa5bHZ2ebLLrybuzGhG6tI3iS3pV3616LfD69fAp25Gw9a3A14amfs0FP00HbbZK4Gv'
-STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
-
-stripe.api_key = STRIPE_SECRET_KEY
+# ========== PAYSTACK PAYMENT CONFIGURATION ==========
+PAYSTACK_PUBLIC_KEY = 'pk_test_ba9497023465711cc9a0b6901fbabe3f98d1336c'
+PAYSTACK_SECRET_KEY = 'sk_test_422c17eb89f5e6bbd3f74c068e472c639e9451f2'
+PAYSTACK_CALLBACK_URL = 'https://globalgigs-0096.onrender.com/payment/callback/'
