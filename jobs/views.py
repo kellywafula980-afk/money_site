@@ -240,3 +240,22 @@ def payment_callback(request):
         messages.error(request, f"Error verifying payment: {str(e)}")
     
     return redirect('post_job')
+
+
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import json
+
+@csrf_exempt
+@require_POST
+def paystack_webhook(request):
+    """Handle Paystack payment webhook notifications"""
+    try:
+        payload = json.loads(request.body)
+        # Add your webhook processing logic here
+        # Verify event type, update payment status, etc.
+        
+        return HttpResponse(status=200)
+    except Exception as e:
+        return HttpResponse(status=400)
