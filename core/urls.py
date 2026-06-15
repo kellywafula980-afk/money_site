@@ -11,6 +11,8 @@ from jobs.views import (
     post_job_page,
     initiate_payment,
     payment_callback,
+    paystack_webhook,  # <-- ADD THIS LINE
+
 )
 
 urlpatterns = [
