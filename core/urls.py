@@ -5,21 +5,19 @@ from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
 from jobs.views import (
-    debug_jobs, 
-    generate_sitemap, 
+    debug_jobs,
+    generate_sitemap,
     robots_txt,
     post_job_page,
     initiate_payment,
     payment_callback,
-    paystack_webhook,  # <-- ADD THIS LINE
-
+    paystack_webhook,  # Only import once
 )
 
 urlpatterns = [
     path('robots.txt', robots_txt, name='robots'),
-    # core/urls.py
-    path('webhook/paystack/', views.paystack_webhook, name='paystack_webhook'), 
-    path('admin/', admin.site.urls), 
+    path('webhook/paystack/', paystack_webhook, name='paystack_webhook'),  # Fixed: removed 'views.'
+    path('admin/', admin.site.urls),
     path('', include('jobs.urls')),
     path('ads.txt', TemplateView.as_view(template_name='jobs/ads.txt', content_type='text/plain')),
     path('google56bce93523ece129.html', TemplateView.as_view(template_name='jobs/google56bce93523ece129.html', content_type='text/html')),
