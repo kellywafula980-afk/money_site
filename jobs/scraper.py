@@ -1,4 +1,3 @@
-cat > jobs/scraper.py << 'EOF'
 import requests
 import html
 import time
@@ -245,4 +244,3 @@ def scale_database_to_thousands():
     print(f"{'='*60}")
     
     return f"Added {added_count} new jobs | Total: {JobListing.objects.count()}"
-EOF
