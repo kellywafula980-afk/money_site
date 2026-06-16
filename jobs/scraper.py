@@ -1,3 +1,4 @@
+cat > jobs/scraper.py << 'EOF'
 import requests
 import html
 import time
@@ -10,41 +11,38 @@ def clean_text(text):
     text = html.unescape(text)
     return text.strip()
 
-def detect_language_and_priority(title, company, description=""):
-    """Detect if job is English or non-English"""
-    full_text = f"{title} {company} {description}".lower()
+def extract_salary(text):
+    """Try to extract salary from job description or title"""
+    if not text:
+        return None
     
-    # Non-English indicators
-    non_english_patterns = [
-        r'\(m/w/d\)', r'\(gn\)', r'\(m/w/x\)', r'\(d/w/m\)',
-        r'berlin', r'münchen', r'munich', r'hamburg', r'köln', r'cologne',
-        r'frankfurt', r'stuttgart', r'düsseldorf', r'dresden', r'nürnberg',
-        r'leipzig', r'essen', r'dortmund', r'bonn', r'münster',
-        r'gesucht', r'bewerben', r'mitarbeiter', r'teamleiter',
-        r'gmbh', r'ag', r'kg', r'\.de',
-        r'paris', r'lille', r'lyon', r'marseille', r'toulouse',
-        r'recherchons', r'poste', r'cdi', r'stage', r'alternance',
-        r'madrid', r'barcelona', r'valencia', r'sevilla',
-        r'se busca', r'oferta', r'contrato', r'jornada',
-        r'[а-яА-Я]', r'[一-鿋]', r'[가-힣]',
+    # Common salary patterns
+    patterns = [
+        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*\$(\d{2,3}[,.]?\d{3})',  # $50,000 - $80,000
+        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',   # $50,000 - 80,000
+        r'(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',     # 50,000 - 80,000
+        r'\$(\d{2,3}[,.]?\d{3})\+',                               # $50,000+
+        r'\$(\d{2,3}[,.]?\d{3})',                                 # $50,000
+        r'(\d{2,3}[,.]?\d{3})\s*(?:per year|annually|yearly)',   # 50,000 per year
+        r'(\d{2,3}[,.]?\d{3})\s*(?:-)\s*(\d{2,3}[,.]?\d{3})',    # 50,000 - 80,000
     ]
     
-    for pattern in non_english_patterns:
-        if re.search(pattern, full_text, re.IGNORECASE):
-            return 'non_english'
-    return 'english'
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            if len(match.groups()) == 2:
+                return f"${match.group(1)} - ${match.group(2)}"
+            else:
+                return f"${match.group(1)}"
+    
+    return None
 
 def scale_database_to_thousands():
-    """MASSIVE SCRAPER - Fetches 1000+ jobs from multiple sources"""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
+    """Scrape jobs and extract real salaries"""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GigsAggregator/1.0'}
     added_count = 0
-    english_count = 0
-    non_english_count = 0
     skipped_count = 0
     
-    # Get existing jobs to avoid duplicates
     existing_jobs = JobListing.objects.all()
     existing_keys = set()
     for job in existing_jobs:
@@ -52,12 +50,9 @@ def scale_database_to_thousands():
         existing_keys.add(key)
     
     print(f"📊 Existing jobs: {len(existing_keys)}")
-    print("🚀 MASSIVE SCRAPE STARTING - Target: 1000+ new jobs\n")
     
-    # ============================================================
-    # PIPELINE 1: RemoteOK (All jobs, full feed)
-    # ============================================================
-    print("🌍 Pipeline 1: RemoteOK (Full feed)...")
+    # PIPELINE 1: RemoteOK
+    print("🌍 Fetching from RemoteOK...")
     try:
         response = requests.get("https://remoteok.com/api", headers=headers, timeout=15)
         if response.status_code == 200:
@@ -71,40 +66,41 @@ def scale_database_to_thousands():
                 if not title or not company:
                     continue
                 
-                language = detect_language_and_priority(title, company, '')
                 key = f"{title.lower()}|{company.lower()}"
-                
                 if key not in existing_keys:
+                    # Get salary from job data
+                    salary = clean_text(job.get('salary', ''))
+                    description = job.get('description', '')
+                    
+                    # If no salary in job data, try extracting from description
+                    if not salary or salary == '$40,000 - $80,000':
+                        extracted = extract_salary(description)
+                        if extracted:
+                            salary = extracted
+                    
                     JobListing.objects.create(
                         title=title,
                         company_name=company,
                         location=clean_text(job.get('location', 'Remote')),
-                        description=job.get('description', ''),
+                        description=description,
                         apply_url=job.get('url', '#'),
-                        salary_range=clean_text(job.get('salary', '$40,000 - $80,000')),
-                        is_premium=(language == 'english')
+                        salary_range=salary or '$40,000 - $80,000'
                     )
                     added_count += 1
                     existing_keys.add(key)
-                    if language == 'english':
-                        english_count += 1
-                    else:
-                        non_english_count += 1
-                    print(f"   ✅ [{added_count}] Added: {title[:50]}...")
+                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
                 else:
                     skipped_count += 1
     except Exception as e:
         print(f"⚠️ RemoteOK error: {e}")
     
-    # ============================================================
-    # PIPELINE 2: Himalayas (Multiple pages - up to 500 jobs)
-    # ============================================================
-    print("\n🌍 Pipeline 2: Himalayas (Multi-page - 500+ jobs)...")
-    hima_pages = 0
+    # PIPELINE 2: Himalayas
+    print("🌍 Fetching from Himalayas...")
     offset = 0
     limit = 50
+    hima_pages = 0
     
-    while hima_pages < 15:  # 15 pages x 50 = 750 jobs max
+    while hima_pages < 5:
         himalayas_url = f"https://himalayas.app/jobs/api?limit={limit}&offset={offset}"
         try:
             res = requests.get(himalayas_url, headers=headers, timeout=15)
@@ -123,10 +119,17 @@ def scale_database_to_thousands():
                 if not title or not company:
                     continue
                 
-                language = detect_language_and_priority(title, company, '')
                 key = f"{title.lower()}|{company.lower()}"
-                
                 if key not in existing_keys:
+                    # Himalayas sometimes has salaryRange
+                    salary = clean_text(job.get('salaryRange', ''))
+                    description = job.get('description', '')
+                    
+                    if not salary:
+                        extracted = extract_salary(description)
+                        if extracted:
+                            salary = extracted
+                    
                     loc_restrictions = job.get('locationRestrictions', [])
                     location = ", ".join(loc_restrictions) if loc_restrictions else "Worldwide"
                     
@@ -134,33 +137,25 @@ def scale_database_to_thousands():
                         title=title,
                         company_name=company,
                         location=location,
-                        description=job.get('description', ''),
+                        description=description,
                         apply_url=job.get('applicationLink', '#'),
-                        salary_range=clean_text(job.get('salaryRange', '$40,000 - $80,000')),
-                        is_premium=(language == 'english')
+                        salary_range=salary or '$40,000 - $80,000'
                     )
                     added_count += 1
                     existing_keys.add(key)
-                    if language == 'english':
-                        english_count += 1
-                    else:
-                        non_english_count += 1
-                    print(f"   ✅ [{added_count}] Added: {title[:50]}...")
+                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
                 else:
                     skipped_count += 1
                     
             offset += limit
             hima_pages += 1
-            time.sleep(0.3)
-            print(f"   📄 Himalayas page {hima_pages}/15 processed")
+            time.sleep(0.5)
         except Exception as e:
-            print(f"⚠️ Himalayas error at offset {offset}: {e}")
+            print(f"⚠️ Himalayas error: {e}")
             break
     
-    # ============================================================
-    # PIPELINE 3: Jobicy (Multiple requests - 100 + 100 = 200 jobs)
-    # ============================================================
-    print("\n🌍 Pipeline 3: Jobicy (200 jobs)...")
+    # PIPELINE 3: Jobicy
+    print("🌍 Fetching from Jobicy...")
     for count in [50, 100]:
         try:
             jobicy_url = f"https://jobicy.com/api/v2/remote-jobs?count={count}"
@@ -177,35 +172,29 @@ def scale_database_to_thousands():
                     if not title or not company:
                         continue
                     
-                    language = detect_language_and_priority(title, company, '')
                     key = f"{title.lower()}|{company.lower()}"
-                    
                     if key not in existing_keys:
+                        description = job.get('jobDescription', '')
+                        salary = extract_salary(description) or '$40,000 - $80,000'
+                        
                         JobListing.objects.create(
                             title=title,
                             company_name=company,
                             location=clean_text(job.get('jobGeo', 'Worldwide')),
-                            description=job.get('jobDescription', ''),
+                            description=description,
                             apply_url=job.get('url', '#'),
-                            salary_range=clean_text(job.get('salary', '$40,000 - $80,000')),
-                            is_premium=(language == 'english')
+                            salary_range=salary
                         )
                         added_count += 1
                         existing_keys.add(key)
-                        if language == 'english':
-                            english_count += 1
-                        else:
-                            non_english_count += 1
-                        print(f"   ✅ [{added_count}] Added: {title[:50]}...")
+                        print(f"   ✅ Added: {title} at {company} | Salary: {salary}")
                     else:
                         skipped_count += 1
         except Exception as e:
-            print(f"⚠️ Jobicy error for count {count}: {e}")
+            print(f"⚠️ Jobicy error: {e}")
     
-    # ============================================================
-    # PIPELINE 4: Remotive (All jobs)
-    # ============================================================
-    print("\n🌍 Pipeline 4: Remotive (All remote jobs)...")
+    # PIPELINE 4: Remotive
+    print("🌍 Fetching from Remotive...")
     try:
         remotive_url = "https://remotive.com/api/remote-jobs"
         res = requests.get(remotive_url, headers=headers, timeout=15)
@@ -221,115 +210,39 @@ def scale_database_to_thousands():
                 if not title or not company:
                     continue
                 
-                language = detect_language_and_priority(title, company, '')
                 key = f"{title.lower()}|{company.lower()}"
-                
                 if key not in existing_keys:
+                    description = job.get('description', '')
+                    salary = clean_text(job.get('salary', ''))
+                    
+                    if not salary:
+                        extracted = extract_salary(description)
+                        if extracted:
+                            salary = extracted
+                    
                     JobListing.objects.create(
                         title=title,
                         company_name=company,
                         location=clean_text(job.get('candidate_required_location', 'Worldwide')),
-                        description=job.get('description', ''),
+                        description=description,
                         apply_url=job.get('url', '#'),
-                        salary_range=clean_text(job.get('salary', '$40,000 - $80,000')),
-                        is_premium=(language == 'english')
+                        salary_range=salary or '$40,000 - $80,000'
                     )
                     added_count += 1
                     existing_keys.add(key)
-                    if language == 'english':
-                        english_count += 1
-                    else:
-                        non_english_count += 1
-                    print(f"   ✅ [{added_count}] Added: {title[:50]}...")
+                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
                 else:
                     skipped_count += 1
     except Exception as e:
         print(f"⚠️ Remotive error: {e}")
     
-    # ============================================================
-    # PIPELINE 5: Arbeitnow (Multiple categories)
-    # ============================================================
-    print("\n🌍 Pipeline 5: Arbeitnow (All categories)...")
-    categories = ['software', 'sales', 'marketing', 'design', 'customer-support', 'finance']
-    
-    for category in categories:
-        try:
-            arbeitnow_url = f"https://www.arbeitnow.com/api/job-board-api?category={category}"
-            res = requests.get(arbeitnow_url, headers=headers, timeout=10)
-            
-            if res.status_code == 200:
-                data = res.json()
-                jobs_list = data.get('data', [])
-                
-                for job in jobs_list:
-                    title = clean_text(job.get('title', ''))
-                    company = clean_text(job.get('company_name', ''))
-                    
-                    if not title or not company:
-                        continue
-                    
-                    language = detect_language_and_priority(title, company, '')
-                    key = f"{title.lower()}|{company.lower()}"
-                    
-                    if key not in existing_keys:
-                        JobListing.objects.create(
-                            title=title,
-                            company_name=company,
-                            location=clean_text(job.get('location', 'Worldwide')),
-                            description=job.get('description', ''),
-                            apply_url=job.get('url', '#'),
-                            salary_range="$40,000 - $80,000",
-                            is_premium=(language == 'english')
-                        )
-                        added_count += 1
-                        existing_keys.add(key)
-                        if language == 'english':
-                            english_count += 1
-                        else:
-                            non_english_count += 1
-                        print(f"   ✅ [{added_count}] Added: {title[:50]}...")
-                    else:
-                        skipped_count += 1
-            time.sleep(0.3)
-        except Exception as e:
-            print(f"⚠️ Arbeitnow ({category}) error: {e}")
-    
-    # ============================================================
-    # PIPELINE 6: Adzuna (if API available - requires key)
-    # ============================================================
-    print("\n🌍 Pipeline 6: Additional sources...")
-    
-    # Try alternative free APIs
-    alt_sources = [
-        ("https://api.allorigins.win/raw?url=https://weworkremotely.com/remote-jobs.rss", "RSS"),
-    ]
-    
-    for source_url, source_name in alt_sources:
-        try:
-            res = requests.get(source_url, headers=headers, timeout=10)
-            if res.status_code == 200:
-                print(f"   📡 Connected to {source_name}...")
-        except:
-            pass
-    
-    # ============================================================
-    # SUMMARY
-    # ============================================================
-    print(f"\n{'='*70}")
-    print(f"📊 MASSIVE SCRAPE SUMMARY")
-    print(f"{'='*70}")
-    print(f"✅ NEW jobs added TOTAL: {added_count}")
-    print(f"   🇬🇧 English jobs: {english_count} (will show first)")
-    print(f"   🌍 Non-English jobs: {non_english_count} (will show lower)")
+    print(f"\n{'='*60}")
+    print(f"📊 SCRAPER SUMMARY")
+    print(f"{'='*60}")
+    print(f"✅ New jobs added: {added_count}")
     print(f"⏭️  Skipped (duplicates): {skipped_count}")
-    print(f"📈 TOTAL jobs now in database: {JobListing.objects.count()}")
-    print(f"{'='*70}")
+    print(f"📈 Total jobs in database: {JobListing.objects.count()}")
+    print(f"{'='*60}")
     
-    if added_count > 1000:
-        print(f"\n🎉 EXCELLENT! Added over 1000 new jobs!")
-    elif added_count > 500:
-        print(f"\n👍 Great! Added over 500 new jobs!")
-    elif added_count > 0:
-        print(f"\n✅ Added {added_count} new jobs.")
-    
-    return f"Added {added_count} new jobs | Total: {JobListing.objects.count()} | English: {english_count} | Non-English: {non_english_count}"
+    return f"Added {added_count} new jobs | Total: {JobListing.objects.count()}"
+EOF
