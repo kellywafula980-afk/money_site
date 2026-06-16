@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ job.title }} at {{ job.company_name }} | GlobalGigs</title>
+    <meta name="description" content="{{ job.title }} at {{ job.company_name }}. {{ job.location }} - Apply now on GlobalGigs">
     
     <!-- 🟢 AADS Bot Crawler Verification Meta Tag -->
     <meta name="aads-verification" content="2442514">
@@ -14,28 +15,39 @@
       "@context": "https://schema.org/",
       "@type": "JobPosting",
       "title": "{{ job.title|escapejs }}",
-      "description": "{{ job.description|default:"Open remote position. See requirements on screen to apply."|escapejs }}",
+      "description": "{{ job.description|default:"Open remote position. See requirements on screen to apply."|escapejs|truncatechars:4000 }}",
       "datePosted": "{{ job.created_at|date:'Y-m-d' }}",
       "validThrough": "2026-12-31",
       "employmentType": "FULL_TIME",
-      "hiringOrganization" : {
-        "@type" : "Organization",
-        "name" : "{{ job.company_name|escapejs }}",
-        "sameAs" : "https://globalgigs-0096.onrender.com"
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "{{ job.company_name|escapejs }}",
+        "sameAs": "https://globalgigs-0096.onrender.com"
       },
       "jobLocation": {
         "@type": "Place",
         "address": {
           "@type": "PostalAddress",
-          "addressLocality": "Remote",
-          "addressCountry": "Global"
+          "addressLocality": "{{ job.location|default:'Remote'|escapejs }}",
+          "addressCountry": "Worldwide"
         }
       },
       "applicantLocationRequirements": {
         "@type": "Country",
         "name": "Worldwide"
       },
-      "jobLocationType": "TELECOMMUTE"
+      "jobLocationType": "TELECOMMUTE",
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "USD",
+        "value": {
+          "@type": "QuantitativeValue",
+          "minValue": 40000,
+          "maxValue": 80000,
+          "unitText": "YEAR"
+        }
+      },
+      "workHours": "40 hours per week"
     }
     </script>
     
@@ -107,7 +119,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
                 <p class="text-zinc-500 text-xs uppercase tracking-wider mb-1">📍 Location</p>
-                <p class="text-white font-medium">{{ job.location }}</p>
+                <p class="text-white font-medium">{{ job.location|default:"Remote" }}</p>
             </div>
             <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
                 <p class="text-zinc-500 text-xs uppercase tracking-wider mb-1">💰 Salary Range</p>
