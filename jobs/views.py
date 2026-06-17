@@ -259,3 +259,23 @@ def paystack_webhook(request):
         return HttpResponse(status=200)
     except Exception as e:
         return HttpResponse(status=400)
+    
+
+
+from django.core.management import call_command
+from django.http import HttpResponse
+
+def run_migrations(request):
+    """Run migrations via URL (for Render free tier)"""
+    key = request.GET.get('key')
+    
+    # Security check - same key as your scraper
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    try:
+        # Run migrations
+        call_command('migrate')
+        return HttpResponse("✅ Migrations completed successfully!")
+    except Exception as e:
+        return HttpResponse(f"❌ Error: {str(e)}", status=500)

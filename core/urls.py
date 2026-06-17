@@ -1,4 +1,6 @@
 from django.contrib import admin
+from jobs.views import run_migrations
+
 from django.urls import path, include
 from django.views.generic import TemplateView
 from django.http import HttpResponse
@@ -15,6 +17,8 @@ from jobs.views import (
 )
 
 urlpatterns = [
+    path('migrate/', run_migrations, name='run_migrations'),
+
     path('robots.txt', robots_txt, name='robots'),
     path('webhook/paystack/', paystack_webhook, name='paystack_webhook'),  # Fixed: removed 'views.'
     path('admin/', admin.site.urls),
