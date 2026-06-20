@@ -10,9 +10,6 @@
     
     <!-- Tailwind CSS CDN for modern design structures -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <a href="{% url 'post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-3 py-1 rounded-lg font-bold transition">
-    Post Job
-</a>
 </head>
 <body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
 
@@ -41,7 +38,7 @@
             </p>
         </div>
 
-        <!-- 🔍 High-Intent Search Bar Engine -->
+        <!-- 🔍 High-Intent Search Bar with Category Dropdown -->
         <form method="GET" action="" class="flex flex-col sm:flex-row gap-2 w-full mb-8">
             <div class="relative flex-1">
                 <input 
@@ -54,16 +51,26 @@
                 <span class="absolute left-3.5 top-3.5 text-zinc-600 font-bold">🔍</span>
             </div>
             
-            <div class="flex gap-2">
-                <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold rounded-xl transition duration-150 shadow-lg shadow-emerald-500/10">
-                    Search
-                </button>
-                {% if search_query %}
-                    <a href="/" class="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium rounded-xl transition text-center flex items-center justify-center">
-                        Clear
-                    </a>
-                {% endif %}
+            <!-- 🏷️ Category Dropdown -->
+            <div class="relative">
+                <select 
+                    name="category" 
+                    onchange="this.form.submit()"
+                    class="w-full sm:w-48 px-4 py-3 bg-zinc-800 border border-zinc-700 text-white rounded-xl focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-10"
+                >
+                    <option value="">📌 All Jobs</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.slug }}" {% if current_category == cat.slug %}selected{% endif %}>
+                            {{ cat.icon }} {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <span class="absolute right-3 top-3.5 text-zinc-500 pointer-events-none">▼</span>
             </div>
+            
+            <button type="submit" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold rounded-xl transition duration-150 shadow-lg shadow-emerald-500/10 whitespace-nowrap">
+                Search
+            </button>
         </form>
 
         <!-- 🏷️ Search Context Banner -->
@@ -83,16 +90,23 @@
         <div class="space-y-4">
             {% for job in jobs %}
                 
-                <!-- Pure Job Card Component - NO Apply Button -->
+                <!-- Pure Job Card Component -->
                 <div class="p-6 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900 transition duration-200">
                     <a href="/jobs/{{ job.id }}/" class="block">
                         <h3 class="text-lg font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition cursor-pointer">
                             {{ job.title }}
                         </h3>
                     </a>
-                    <p class="text-zinc-400 font-medium text-sm mt-1">
-                        🏢 {{ job.company_name }} <span class="text-zinc-600 mx-1.5">•</span> 📍 {{ job.location }}
-                    </p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-zinc-400 font-medium text-sm">
+                            🏢 {{ job.company_name }} <span class="text-zinc-600 mx-1.5">•</span> 📍 {{ job.location }}
+                        </p>
+                        {% if job.category %}
+                            <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                                {{ job.category.icon }} {{ job.category.name }}
+                            </span>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <!-- 💰 PROGRAMMATIC AD SLOT INJECTIONS -->
