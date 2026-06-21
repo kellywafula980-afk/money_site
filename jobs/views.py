@@ -344,3 +344,13 @@ def create_categories_production(request):
             created += 1
     
     return HttpResponse(f"✅ Created {created} new categories on production. Total: {JobCategory.objects.count()}")
+
+def categorize_jobs_production(request):
+    """Categorize jobs on production database"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .categorizer import auto_categorize_jobs
+    count = auto_categorize_jobs()
+    return HttpResponse(f"✅ Categorized {count} jobs on production")
