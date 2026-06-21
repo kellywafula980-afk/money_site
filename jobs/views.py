@@ -354,3 +354,165 @@ def categorize_jobs_production(request):
     from .categorizer import auto_categorize_jobs
     count = auto_categorize_jobs()
     return HttpResponse(f"✅ Categorized {count} jobs on production")
+
+def create_categories_production(request):
+    """Create categories on production database"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .models import JobCategory
+    categories = [
+        ('Technology', 'technology', '💻'),
+        ('Marketing', 'marketing', '📊'),
+        ('Sales', 'sales', '🤝'),
+        ('Healthcare', 'healthcare', '🏥'),
+        ('Finance', 'finance', '💰'),
+        ('Education', 'education', '📚'),
+        ('Administrative', 'administrative', '📋'),
+        ('Customer Service', 'customer-service', '🎧'),
+        ('Design', 'design', '🎨'),
+        ('Engineering', 'engineering', '🔧'),
+        ('HR', 'hr', '👥'),
+        ('Legal', 'legal', '⚖️'),
+        ('Operations', 'operations', '📦'),
+        ('Data', 'data', '📊'),
+        ('Product', 'product', '📱'),
+        ('Writing', 'writing', '✍️'),
+        ('Consulting', 'consulting', '💡'),
+        ('Real Estate', 'real-estate', '🏠'),
+        ('Media', 'media', '🎬'),
+    ]
+    
+    created = 0
+    for name, slug, icon in categories:
+        obj, is_new = JobCategory.objects.get_or_create(name=name, slug=slug, icon=icon)
+        if is_new:
+            created += 1
+    
+    return HttpResponse(f"✅ Created {created} new categories on production. Total: {JobCategory.objects.count()}")
+
+
+def categorize_jobs_production(request):
+    """Categorize jobs on production database"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .categorizer import auto_categorize_jobs
+    count = auto_categorize_jobs()
+    return HttpResponse(f"✅ Categorized {count} jobs on production")
+
+
+def force_assign_categories(request):
+    """Force assign categories to all jobs"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .models import JobListing, JobCategory
+    import re
+    
+    keywords = {
+        'Technology': ['software', 'developer', 'engineer', 'programming', 'code', 'it', 'tech', 'cloud', 'data', 'ai', 'python', 'java', 'javascript', 'react', 'django', 'fullstack', 'backend', 'frontend', 'devops'],
+        'Marketing': ['marketing', 'seo', 'social media', 'content', 'brand', 'digital marketing', 'ppc', 'advertising', 'growth', 'campaign'],
+        'Sales': ['sales', 'account executive', 'business development', 'sales rep', 'sales manager', 'account manager', 'inside sales', 'bd'],
+        'Healthcare': ['health', 'medical', 'doctor', 'nurse', 'clinical', 'patient', 'care', 'healthcare', 'pharmacy', 'wellness'],
+        'Finance': ['finance', 'accountant', 'financial', 'banking', 'investment', 'tax', 'audit', 'controller', 'treasury'],
+        'Education': ['teacher', 'education', 'training', 'instructor', 'curriculum', 'academic', 'tutor', 'professor'],
+        'Administrative': ['administrative', 'assistant', 'office', 'coordinator', 'receptionist', 'admin', 'executive assistant'],
+        'Customer Service': ['customer service', 'support', 'customer success', 'help desk', 'call center', 'client service'],
+        'Design': ['designer', 'design', 'ui', 'ux', 'graphic', 'creative', 'visual', 'artist'],
+        'Engineering': ['mechanical', 'electrical', 'civil', 'construction', 'architect', 'structural', 'project engineer'],
+        'HR': ['human resources', 'hr', 'recruitment', 'recruiter', 'talent', 'people operations', 'hiring'],
+        'Legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance', 'regulatory', 'contract'],
+        'Operations': ['operations', 'supply chain', 'logistics', 'procurement', 'inventory', 'warehouse'],
+        'Data': ['data scientist', 'data analyst', 'data engineer', 'business intelligence', 'analytics'],
+        'Product': ['product manager', 'product owner', 'product management', 'product development'],
+        'Writing': ['writer', 'editor', 'content', 'copywriter', 'journalist', 'author'],
+        'Consulting': ['consultant', 'consulting', 'advisory', 'strategy', 'management consulting'],
+        'Real Estate': ['real estate', 'property', 'realtor', 'broker', 'property management'],
+        'Media': ['media', 'video', 'content creator', 'influencer', 'broadcast', 'production'],
+    }
+    
+    category_map = {cat.name.lower(): cat for cat in JobCategory.objects.all()}
+    jobs = JobListing.objects.filter(category__isnull=True)
+    total = jobs.count()
+    categorized = 0
+    
+    for job in jobs:
+        text = f"{job.title} {job.description}".lower()
+        
+        best_cat = None
+        best_score = 0
+        
+        for cat_name, cat_keywords in keywords.items():
+            score = sum(1 for kw in cat_keywords if kw in text)
+            if score > best_score:
+                best_score = score
+                best_cat = category_map.get(cat_name.lower())
+        
+        if best_cat and best_score >= 2:
+            job.category = best_cat
+            job.save()
+            categorized += 1
+    
+    return HttpResponse(f"✅ Categorized {categorized} out of {total} jobs")
+
+
+def simple_categorize(request):
+    """Simple categorization for production"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .models import JobListing, JobCategory
+    import re
+    
+    categories = JobCategory.objects.all()
+    category_map = {cat.name.lower(): cat for cat in categories}
+    
+    keywords = {
+        'Technology': ['software', 'developer', 'engineer', 'programming', 'code', 'it', 'tech', 'cloud', 'data', 'ai', 'python', 'java', 'javascript', 'react', 'django', 'fullstack', 'backend', 'frontend', 'devops'],
+        'Marketing': ['marketing', 'seo', 'social media', 'content', 'brand', 'digital marketing', 'ppc', 'advertising', 'growth', 'campaign'],
+        'Sales': ['sales', 'account executive', 'business development', 'sales rep', 'sales manager', 'account manager', 'inside sales', 'bd'],
+        'Healthcare': ['health', 'medical', 'doctor', 'nurse', 'clinical', 'patient', 'care', 'healthcare', 'pharmacy', 'wellness'],
+        'Finance': ['finance', 'accountant', 'financial', 'banking', 'investment', 'tax', 'audit', 'controller', 'treasury'],
+        'Education': ['teacher', 'education', 'training', 'instructor', 'curriculum', 'academic', 'tutor', 'professor'],
+        'Administrative': ['administrative', 'assistant', 'office', 'coordinator', 'receptionist', 'admin', 'executive assistant'],
+        'Customer Service': ['customer service', 'support', 'customer success', 'help desk', 'call center', 'client service'],
+        'Design': ['designer', 'design', 'ui', 'ux', 'graphic', 'creative', 'visual', 'artist'],
+        'Engineering': ['mechanical', 'electrical', 'civil', 'construction', 'architect', 'structural', 'project engineer'],
+        'HR': ['human resources', 'hr', 'recruitment', 'recruiter', 'talent', 'people operations', 'hiring'],
+        'Legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance', 'regulatory', 'contract'],
+        'Operations': ['operations', 'supply chain', 'logistics', 'procurement', 'inventory', 'warehouse'],
+        'Data': ['data scientist', 'data analyst', 'data engineer', 'business intelligence', 'analytics'],
+        'Product': ['product manager', 'product owner', 'product management', 'product development'],
+        'Writing': ['writer', 'editor', 'content', 'copywriter', 'journalist', 'author'],
+        'Consulting': ['consultant', 'consulting', 'advisory', 'strategy', 'management consulting'],
+        'Real Estate': ['real estate', 'property', 'realtor', 'broker', 'property management'],
+        'Media': ['media', 'video', 'content creator', 'influencer', 'broadcast', 'production'],
+    }
+    
+    jobs = JobListing.objects.filter(category__isnull=True)
+    total = jobs.count()
+    categorized = 0
+    
+    for job in jobs:
+        text = f"{job.title} {job.description}".lower()
+        
+        best_cat = None
+        best_score = 0
+        
+        for cat_name, cat_keywords in keywords.items():
+            score = sum(1 for kw in cat_keywords if kw in text)
+            if score > best_score:
+                best_score = score
+                best_cat = category_map.get(cat_name.lower())
+        
+        if best_cat and best_score >= 2:
+            job.category = best_cat
+            job.save()
+            categorized += 1
+    
+    return HttpResponse(f"✅ Categorized {categorized} out of {total} jobs")

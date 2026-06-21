@@ -6,8 +6,6 @@ from django.conf.urls.static import static
 from jobs import views
 
 urlpatterns = [
-    path('categorize-jobs-prod/', views.categorize_jobs_production, name='categorize_jobs_prod'),
-    path('create-categories-prod/', views.create_categories_production, name='create_categories_prod'),
     path('robots.txt', views.robots_txt, name='robots'),
     path('admin/', admin.site.urls),
     path('', include('jobs.urls')),
@@ -20,6 +18,10 @@ urlpatterns = [
     path('payment/callback/', views.payment_callback, name='payment_callback'),
     path('sitemap.xml', views.generate_sitemap, name='sitemap'),
     path('migrate/', views.run_migrations, name='run_migrations'),
+    path('create-categories-prod/', views.create_categories_production, name='create_categories_prod'),
+    path('categorize-jobs-prod/', views.categorize_jobs_production, name='categorize_jobs_prod'),
+    path('force-assign-categories/', views.force_assign_categories, name='force_assign_categories'),
+    path('simple-categorize/', views.simple_categorize, name='simple_categorize'),
 ]
 
 if settings.DEBUG:
