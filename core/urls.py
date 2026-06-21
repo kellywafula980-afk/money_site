@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from jobs import views
 
 urlpatterns = [
+    path('create-categories-prod/', views.create_categories_production, name='create_categories_prod'),
     path('robots.txt', views.robots_txt, name='robots'),
     path('admin/', admin.site.urls),
     path('', include('jobs.urls')),

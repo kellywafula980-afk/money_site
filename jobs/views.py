@@ -307,3 +307,40 @@ def paystack_webhook(request):
         return HttpResponse(status=200)
     except Exception as e:
         return HttpResponse(status=400)
+
+def create_categories_production(request):
+    """Create categories on production database"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .models import JobCategory
+    categories = [
+        ('Technology', 'technology', '💻'),
+        ('Marketing', 'marketing', '📊'),
+        ('Sales', 'sales', '🤝'),
+        ('Healthcare', 'healthcare', '🏥'),
+        ('Finance', 'finance', '💰'),
+        ('Education', 'education', '📚'),
+        ('Administrative', 'administrative', '📋'),
+        ('Customer Service', 'customer-service', '🎧'),
+        ('Design', 'design', '🎨'),
+        ('Engineering', 'engineering', '🔧'),
+        ('HR', 'hr', '👥'),
+        ('Legal', 'legal', '⚖️'),
+        ('Operations', 'operations', '📦'),
+        ('Data', 'data', '📊'),
+        ('Product', 'product', '📱'),
+        ('Writing', 'writing', '✍️'),
+        ('Consulting', 'consulting', '💡'),
+        ('Real Estate', 'real-estate', '🏠'),
+        ('Media', 'media', '🎬'),
+    ]
+    
+    created = 0
+    for name, slug, icon in categories:
+        obj, is_new = JobCategory.objects.get_or_create(name=name, slug=slug, icon=icon)
+        if is_new:
+            created += 1
+    
+    return HttpResponse(f"✅ Created {created} new categories on production. Total: {JobCategory.objects.count()}")
