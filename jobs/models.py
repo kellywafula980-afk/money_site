@@ -32,6 +32,7 @@ class JobListing(models.Model):
     title = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255)
     description = models.TextField()
+    category = models.ForeignKey('JobCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='jobs')
     location = models.CharField(max_length=100, default="Remote")
     apply_url = models.URLField(max_length=500, unique=True)
     
@@ -68,3 +69,17 @@ class JobApplication(models.Model):
     
     def __str__(self):
         return f"{self.full_name} - {self.job.title}"
+class JobCategory(models.Model):
+    """Job categories for better organization"""
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name_plural = "Job Categories"
+        ordering = ['name']

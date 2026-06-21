@@ -1,35 +1,23 @@
 from django.contrib import admin
-from jobs.views import run_migrations
-
 from django.urls import path, include
 from django.views.generic import TemplateView
-from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
-from jobs.views import (
-    debug_jobs,
-    generate_sitemap,
-    robots_txt,
-    post_job_page,
-    initiate_payment,
-    payment_callback,
-    paystack_webhook,  # Only import once
-)
+from jobs import views
 
 urlpatterns = [
-    path('migrate/', run_migrations, name='run_migrations'),
-
-    path('robots.txt', robots_txt, name='robots'),
-    path('webhook/paystack/', paystack_webhook, name='paystack_webhook'),  # Fixed: removed 'views.'
+    path('robots.txt', views.robots_txt, name='robots'),
     path('admin/', admin.site.urls),
     path('', include('jobs.urls')),
     path('ads.txt', TemplateView.as_view(template_name='jobs/ads.txt', content_type='text/plain')),
     path('google56bce93523ece129.html', TemplateView.as_view(template_name='jobs/google56bce93523ece129.html', content_type='text/html')),
-    path('debug/', debug_jobs, name='debug'),
-    path('post-job/', post_job_page, name='post_job'),
-    path('initiate-payment/', initiate_payment, name='initiate_payment'),
-    path('payment/callback/', payment_callback, name='payment_callback'),
-    path('sitemap.xml', generate_sitemap, name='sitemap'),
+    path('debug/', views.debug_jobs, name='debug'),
+    path('category-debug/', views.category_debug, name='category_debug'),
+    path('post-job/', views.post_job_page, name='post_job'),
+    path('initiate-payment/', views.initiate_payment, name='initiate_payment'),
+    path('payment/callback/', views.payment_callback, name='payment_callback'),
+    path('sitemap.xml', views.generate_sitemap, name='sitemap'),
+    path('migrate/', views.run_migrations, name='run_migrations'),
 ]
 
 if settings.DEBUG:

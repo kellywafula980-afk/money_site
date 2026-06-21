@@ -1,13 +1,17 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q
 from django.http import HttpResponse
+from django.contrib import messages
 from django.urls import reverse
 from django.conf import settings
-from django.contrib import messages
-import requests
-from .models import JobListing, JobApplication
+from django.core.management import call_command
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
 from .scraper import scale_database_to_thousands
+import requests
+import json
 
 
 # ============================================================
@@ -15,20 +19,43 @@ from .scraper import scale_database_to_thousands
 # ============================================================
 
 def job_list_view(request):
-    """Renders the live job stream with search functionality"""
+    """Renders the live job stream with search and category filters"""
     query = request.GET.get('search', '').strip()
+    category_slug = request.GET.get('category', '')
+    
+    # Start with all jobs
     jobs = JobListing.objects.all().order_by('-id')
     
+    # 🏷️ FILTER BY CATEGORY (checks database for jobs in that category)
+    if category_slug:
+        try:
+            # Get the category from database
+            category = JobCategory.objects.get(slug=category_slug)
+            # Filter jobs to only those with this category
+            jobs = jobs.filter(category=category)
+            print(f"🔍 Filtering jobs by category: {category.name} (found {jobs.count()} jobs)")
+        except JobCategory.DoesNotExist:
+            # If category doesn't exist, return empty results
+            jobs = JobListing.objects.none()
+            print(f"❌ Category '{category_slug}' not found")
+    
+    # 🔍 FILTER BY SEARCH QUERY
     if query:
         jobs = jobs.filter(
             Q(title__icontains=query) | 
             Q(company_name__icontains=query) |
             Q(location__icontains=query)
         )
-        
+    
+    # Get all categories for the dropdown
+    categories = JobCategory.objects.all()
+    
     context = {
         'jobs': jobs,
         'search_query': query,
+        'categories': categories,
+        'current_category': category_slug,
+        'category_name': JobCategory.objects.get(slug=category_slug).name if category_slug and JobCategory.objects.filter(slug=category_slug).exists() else None,
     }
     
     return render(request, 'jobs/home.html', context)
@@ -105,6 +132,27 @@ def debug_jobs(request):
     return HttpResponse(output)
 
 
+def category_debug(request):
+    """Debug view to check categories and jobs"""
+    output = "<h1>Category Debug</h1>"
+    
+    categories = JobCategory.objects.all()
+    output += f"<p>Total categories: {categories.count()}</p>"
+    
+    for cat in categories:
+        job_count = cat.jobs.count()
+        output += f"<p><strong>{cat.icon} {cat.name}</strong>: {job_count} jobs</p>"
+        if job_count > 0:
+            output += "<ul>"
+            for job in cat.jobs.all()[:5]:
+                output += f"<li>{job.title}</li>"
+            if job_count > 5:
+                output += f"<li>... and {job_count - 5} more</li>"
+            output += "</ul>"
+    
+    return HttpResponse(output)
+
+
 # ============================================================
 # SITEMAP & ROBOTS
 # ============================================================
@@ -116,10 +164,8 @@ def generate_sitemap(request):
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     
-    # Add homepage
     xml += '<url>\n<loc>https://globalgigs-0096.onrender.com/</loc>\n<changefreq>daily</changefreq>\n<priority>1.0</priority>\n</url>\n'
     
-    # Add each job
     for job in jobs:
         xml += f'<url>\n<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>\n<changefreq>daily</changefreq>\n<priority>0.8</priority>\n</url>\n'
     
@@ -150,7 +196,6 @@ def initiate_payment(request):
     if request.method == 'POST':
         form = JobPostForm(request.POST)
         if form.is_valid():
-            # Save job data in session temporarily
             request.session['pending_job'] = {
                 'title': form.cleaned_data['title'],
                 'company_name': form.cleaned_data['company_name'],
@@ -159,7 +204,6 @@ def initiate_payment(request):
                 'salary_range': form.cleaned_data['salary_range'],
             }
             
-            # Initialize Paystack payment
             headers = {
                 'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
                 'Content-Type': 'application/json',
@@ -167,8 +211,8 @@ def initiate_payment(request):
             
             data = {
                 'email': request.POST.get('email'),
-                'amount': 4900 * 100,  # $49 in cents (Paystack uses kobo/cent)
-                'currency': 'KES',  # Kenyan Shillings
+                'amount': 4900 * 100,
+                'currency': 'KES',
                 'callback_url': request.build_absolute_uri(reverse('payment_callback')),
                 'metadata': {
                     'job_title': form.cleaned_data['title'],
@@ -186,7 +230,6 @@ def initiate_payment(request):
                 response_data = response.json()
                 
                 if response_data.get('status'):
-                    # Redirect to Paystack payment page
                     return redirect(response_data['data']['authorization_url'])
                 else:
                     messages.error(request, f"Payment initialization failed: {response_data.get('message')}")
@@ -204,10 +247,7 @@ def payment_callback(request):
         messages.error(request, "No payment reference found")
         return redirect('post_job')
     
-    # Verify payment with Paystack
-    headers = {
-        'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
-    }
+    headers = {'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'}
     
     try:
         response = requests.get(
@@ -218,7 +258,6 @@ def payment_callback(request):
         response_data = response.json()
         
         if response_data.get('status') and response_data['data']['status'] == 'success':
-            # Payment successful - save the job
             pending_job = request.session.get('pending_job')
             if pending_job:
                 job = JobListing.objects.create(
@@ -242,10 +281,22 @@ def payment_callback(request):
     return redirect('post_job')
 
 
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-import json
+# ============================================================
+# MIGRATIONS & UTILITY
+# ============================================================
+
+def run_migrations(request):
+    """Run migrations via URL (for Render free tier)"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    try:
+        call_command('migrate')
+        return HttpResponse("✅ Migrations completed successfully!")
+    except Exception as e:
+        return HttpResponse(f"❌ Error: {str(e)}", status=500)
+
 
 @csrf_exempt
 @require_POST
@@ -253,29 +304,6 @@ def paystack_webhook(request):
     """Handle Paystack payment webhook notifications"""
     try:
         payload = json.loads(request.body)
-        # Add your webhook processing logic here
-        # Verify event type, update payment status, etc.
-        
         return HttpResponse(status=200)
     except Exception as e:
         return HttpResponse(status=400)
-    
-
-
-from django.core.management import call_command
-from django.http import HttpResponse
-
-def run_migrations(request):
-    """Run migrations via URL (for Render free tier)"""
-    key = request.GET.get('key')
-    
-    # Security check - same key as your scraper
-    if key != 'candy2026':
-        return HttpResponse("Unauthorized", status=403)
-    
-    try:
-        # Run migrations
-        call_command('migrate')
-        return HttpResponse("✅ Migrations completed successfully!")
-    except Exception as e:
-        return HttpResponse(f"❌ Error: {str(e)}", status=500)
