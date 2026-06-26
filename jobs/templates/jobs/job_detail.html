@@ -4,10 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ job.title }} at {{ job.company_name }} | GlobalGigs</title>
-    <meta name="description" content="{{ job.title }} at {{ job.company_name }}. {{ job.location }} - Apply now on GlobalGigs">
+    <meta name="description" content="{{ job.title }} at {{ job.company_name }}. {% if job.location %}{{ job.location }} - {% endif %}Apply now on GlobalGigs. {{ job.description|striptags|truncatechars:160 }}">
+    <meta name="robots" content="index, follow">
     
     <!-- 🟢 AADS Bot Crawler Verification Meta Tag -->
     <meta name="aads-verification" content="2442514">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://globalgigs-0096.onrender.com/jobs/{{ job.id }}/">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="{{ job.title }} at {{ job.company_name }} | GlobalGigs">
+    <meta property="og:description" content="{{ job.description|striptags|truncatechars:200 }}">
+    <meta property="og:url" content="https://globalgigs-0096.onrender.com/jobs/{{ job.id }}/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="GlobalGigs">
     
     <!-- 🟢 Dynamic Google for Jobs Schema Integration -->
     <script type="application/ld+json">
@@ -55,6 +66,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
+        /* Job Description Styling */
+        .job-description {
+            color: #d4d4d4;
+            line-height: 1.8;
+        }
         .job-description p {
             margin-bottom: 1rem;
         }
@@ -63,11 +79,15 @@
             padding-left: 1.5rem;
         }
         .job-description li {
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            list-style-type: disc;
         }
-        .job-description strong {
+        .job-description ol li {
+            list-style-type: decimal;
+        }
+        .job-description strong, .job-description b {
             color: #10b981;
-            font-weight: bold;
+            font-weight: 700;
         }
         .job-description a {
             color: #10b981;
@@ -77,13 +97,59 @@
             color: #059669;
         }
         .job-description h1, .job-description h2, .job-description h3 {
-            font-weight: bold;
+            font-weight: 700;
+            color: #ffffff;
             margin-top: 1.5rem;
             margin-bottom: 0.75rem;
         }
         .job-description h1 { font-size: 1.5rem; }
         .job-description h2 { font-size: 1.25rem; }
         .job-description h3 { font-size: 1.1rem; }
+        .job-description blockquote {
+            border-left: 4px solid #10b981;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #9ca3af;
+        }
+        .job-description hr {
+            border: 0;
+            border-top: 1px solid #27272a;
+            margin: 1.5rem 0;
+        }
+        
+        /* Section Content Styling */
+        .section-content {
+            color: #d4d4d4;
+            line-height: 1.7;
+        }
+        .section-content ul, .section-content ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        .section-content li {
+            margin-bottom: 0.25rem;
+            list-style-type: disc;
+        }
+        
+        /* File Input Styling */
+        input[type="file"]::file-selector-button {
+            background-color: #10b981;
+            color: #000000;
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #059669;
+        }
+        
+        /* Smooth Scroll */
+        html {
+            scroll-behavior: smooth;
+        }
     </style>
 </head>
 <body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
@@ -91,16 +157,21 @@
     <!-- 🌐 Premium Navigation Header -->
     <header class="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white">
+            <a href="/" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white hover:text-emerald-400 transition">
                 <span class="text-emerald-500">💼</span> GLOBAL<span class="text-emerald-400">GIGS</span>
             </a>
-            <span class="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-mono border border-zinc-700">
-                v2026.Live
-            </span>
+            <div class="flex items-center gap-4">
+                <a href="/post-job/" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
+                    📝 Post Job
+                </a>
+                <span class="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-mono border border-zinc-700">
+                    v2026.Live
+                </span>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-12">
+    <main class="max-w-4xl mx-auto px-4 py-8">
         
         <!-- Back to all jobs link -->
         <a href="/" class="inline-flex items-center gap-2 text-zinc-400 hover:text-emerald-400 transition mb-6 group">
@@ -108,82 +179,232 @@
         </a>
 
         <!-- Job Header -->
-        <div class="border-b border-zinc-800 pb-6 mb-6">
-            <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2">
+        <div class="border-b border-zinc-800 pb-6 mb-8">
+            <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight mb-3">
                 {{ job.title }}
             </h1>
-            <p class="text-xl text-emerald-400 font-bold">{{ job.company_name }}</p>
+            <div class="flex flex-wrap items-center gap-3">
+                <p class="text-xl text-emerald-400 font-bold">{{ job.company_name }}</p>
+                {% if job.category %}
+                    <span class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-900/30">
+                        {{ job.category.icon }} {{ job.category.name }}
+                    </span>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Job Meta Information -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
                 <p class="text-zinc-500 text-xs uppercase tracking-wider mb-1">📍 Location</p>
                 <p class="text-white font-medium">{{ job.location|default:"Remote" }}</p>
             </div>
-            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
                 <p class="text-zinc-500 text-xs uppercase tracking-wider mb-1">💰 Salary Range</p>
                 <p class="text-white font-medium">{{ job.salary_range|default:"Not specified" }}</p>
             </div>
-            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
                 <p class="text-zinc-500 text-xs uppercase tracking-wider mb-1">📅 Posted On</p>
                 <p class="text-white font-medium">{{ job.created_at|date:"F j, Y" }}</p>
             </div>
         </div>
 
-        <!-- Job Description - Rendered HTML -->
+        <!-- ======================================== -->
+        <!-- JOB DESCRIPTION - MAIN CONTENT SECTION   -->
+        <!-- ======================================== -->
         <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 mb-8">
-            <h2 class="text-xl font-bold text-white mb-4">Job Description</h2>
-            <div class="job-description text-zinc-300 leading-relaxed">
+            <h2 class="text-2xl font-bold text-white mb-4">📋 Job Description</h2>
+            <div class="job-description">
                 {{ job.description|safe }}
             </div>
         </div>
 
-        <!-- Application Form Section -->
-        <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 mb-8">
-            <h2 class="text-xl font-bold text-white mb-4">Apply for this Position</h2>
+        <!-- ======================================== -->
+        <!-- STRUCTURED SECTIONS (Responsibilities, Requirements, etc.) -->
+        <!-- ======================================== -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Key Responsibilities -->
+            <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6">
+                <h3 class="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span>🎯</span> Key Responsibilities
+                </h3>
+                <div class="section-content">
+                    {% if job.responsibilities %}
+                        {{ job.responsibilities|safe|linebreaks }}
+                    {% else %}
+                        <p class="text-zinc-500 text-sm">Refer to the full job description above.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Requirements -->
+            <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6">
+                <h3 class="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span>✅</span> Requirements
+                </h3>
+                <div class="section-content">
+                    {% if job.requirements %}
+                        {{ job.requirements|safe|linebreaks }}
+                    {% else %}
+                        <p class="text-zinc-500 text-sm">Refer to the full job description above.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Benefits Section (if available) -->
+        {% if job.benefits %}
+            <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 mb-8">
+                <h3 class="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span>✨</span> Benefits & Perks
+                </h3>
+                <div class="section-content">
+                    {{ job.benefits|safe|linebreaks }}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Company Description Section -->
+        {% if job.company_description %}
+            <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 mb-8">
+                <h3 class="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span>🏢</span> About {{ job.company_name }}
+                </h3>
+                <div class="section-content">
+                    {{ job.company_description|safe|linebreaks }}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- ======================================== -->
+        <!-- RELATED JOBS - Internal Linking for SEO  -->
+        <!-- ======================================== -->
+        {% if related_jobs %}
+            <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 mb-8">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span>🔗</span> Similar Opportunities
+                </h3>
+                <div class="space-y-3">
+                    {% for related in related_jobs %}
+                        <a href="/jobs/{{ related.id }}/" class="block p-3 bg-zinc-800/30 hover:bg-zinc-800 rounded-xl transition group">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <span class="text-white group-hover:text-emerald-400 transition font-medium">
+                                    {{ related.title }}
+                                </span>
+                                <span class="text-zinc-500 text-sm">{{ related.company_name }}</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- ======================================== -->
+        <!-- APPLICATION FORM                        -->
+        <!-- ======================================== -->
+        <div class="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6" id="apply">
+            <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <span>📩</span> Apply for this Position
+            </h2>
+            
+            {% if messages %}
+                <div class="mb-4 p-4 bg-emerald-950/30 border border-emerald-900/50 rounded-xl">
+                    {% for message in messages %}
+                        <p class="text-emerald-400">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
             
             <form method="POST" enctype="multipart/form-data" class="space-y-4">
                 {% csrf_token %}
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Full Name *</label>
-                    <input type="text" name="full_name" required class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Full Name <span class="text-red-400">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="full_name" 
+                        required 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 transition placeholder-zinc-500"
+                        placeholder="John Doe"
+                    >
                 </div>
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Email *</label>
-                    <input type="email" name="email" required class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Email <span class="text-red-400">*</span>
+                    </label>
+                    <input 
+                        type="email" 
+                        name="email" 
+                        required 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 transition placeholder-zinc-500"
+                        placeholder="john@example.com"
+                    >
                 </div>
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Phone (Optional)</label>
-                    <input type="tel" name="phone" class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Phone
+                    </label>
+                    <input 
+                        type="tel" 
+                        name="phone" 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 transition placeholder-zinc-500"
+                        placeholder="+1 234 567 890"
+                    >
                 </div>
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Cover Letter *</label>
-                    <textarea name="cover_letter" rows="6" required class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500" placeholder="Tell us why you're a great fit..."></textarea>
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Cover Letter <span class="text-red-400">*</span>
+                    </label>
+                    <textarea 
+                        name="cover_letter" 
+                        rows="6" 
+                        required 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 transition placeholder-zinc-500 resize-y"
+                        placeholder="Tell us why you're a great fit for this role..."></textarea>
                 </div>
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Resume (PDF, DOC, DOCX) - Optional</label>
-                    <input type="file" name="resume" accept=".pdf,.doc,.docx" class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-emerald-500 file:text-black">
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Resume (PDF, DOC, DOCX)
+                    </label>
+                    <input 
+                        type="file" 
+                        name="resume" 
+                        accept=".pdf,.doc,.docx" 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-emerald-500 file:text-black file:hover:bg-emerald-600 transition"
+                    >
                 </div>
                 
                 <div>
-                    <label class="block text-zinc-400 text-sm mb-1">Portfolio / LinkedIn / GitHub (Optional)</label>
-                    <input type="url" name="portfolio_url" class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500" placeholder="https://...">
+                    <label class="block text-zinc-400 text-sm font-medium mb-1">
+                        Portfolio / LinkedIn / GitHub
+                    </label>
+                    <input 
+                        type="url" 
+                        name="portfolio_url" 
+                        class="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 transition placeholder-zinc-500"
+                        placeholder="https://linkedin.com/in/yourprofile"
+                    >
                 </div>
                 
-                <button type="submit" class="w-full px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-xl transition">
-                    Submit Application 🚀
+                <button 
+                    type="submit" 
+                    class="w-full px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-xl transition shadow-lg shadow-emerald-500/20"
+                >
+                    🚀 Submit Application
                 </button>
             </form>
         </div>
+
     </main>
 
-    <!-- Footer -->
+    <!-- 🔒 Footer -->
     <footer class="border-t border-zinc-800 mt-20 py-8 bg-zinc-950/30">
         <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-600 font-mono">
             <div>

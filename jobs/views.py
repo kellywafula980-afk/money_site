@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
-from .scraper import scale_database_to_thousands
+from .scraper import scale_database_to_thousands, parse_job_sections
 import requests
 import json
 
@@ -67,26 +67,78 @@ content_batcher_dashboard = job_list_view
 
 
 # ============================================================
-# JOB DETAIL & APPLICATIONS
+# JOB DETAIL & APPLICATIONS (ENHANCED VERSION)
 # ============================================================
 
 def job_detail_view(request, job_id):
-    """Display a single job listing with application form"""
+    """Display a single job listing with application form and structured content"""
     job = get_object_or_404(JobListing, id=job_id)
     
-    if request.method == 'POST':
-        application = JobApplication(
-            job=job,
-            full_name=request.POST.get('full_name'),
-            email=request.POST.get('email'),
-            phone=request.POST.get('phone', ''),
-            cover_letter=request.POST.get('cover_letter'),
-            portfolio_url=request.POST.get('portfolio_url', '')
-        )
-        application.save()
-        return render(request, 'jobs/application_success.html', {'job': job})
+    # ============================================================
+    # 🔥 ENHANCEMENT: Parse structured sections from description
+    # ============================================================
+    if not job.responsibilities and job.description:
+        try:
+            parsed, clean_desc = parse_job_sections(job.description)
+            if parsed:
+                job.responsibilities = parsed.get('responsibilities', '')
+                job.requirements = parsed.get('requirements', '')
+                job.benefits = parsed.get('benefits', '')
+                job.company_description = parsed.get('about_company', '')
+                job.save()
+                print(f"✅ Enriched job: {job.title[:50]}... at {job.company_name}")
+        except Exception as e:
+            print(f"⚠️ Error parsing job {job.id}: {e}")
     
-    return render(request, 'jobs/job_detail.html', {'job': job})
+    # ============================================================
+    # 🔥 ENHANCEMENT: Related jobs for internal linking
+    # ============================================================
+    related_jobs = JobListing.objects.filter(
+        category=job.category
+    ).exclude(id=job.id)[:6] if job.category else []
+    
+    # If no related jobs by category, get by similar title
+    if not related_jobs and job.title:
+        title_words = job.title.split()[:3]
+        if title_words:
+            related_jobs = JobListing.objects.filter(
+                Q(title__icontains=title_words[0]) |
+                Q(company_name__icontains=job.company_name[:20])
+            ).exclude(id=job.id)[:6]
+    
+    # ============================================================
+    # HANDLE APPLICATION SUBMISSION
+    # ============================================================
+    if request.method == 'POST':
+        # Check if this is an application submission
+        if 'full_name' in request.POST and 'email' in request.POST:
+            try:
+                application = JobApplication(
+                    job=job,
+                    full_name=request.POST.get('full_name'),
+                    email=request.POST.get('email'),
+                    phone=request.POST.get('phone', ''),
+                    cover_letter=request.POST.get('cover_letter'),
+                    portfolio_url=request.POST.get('portfolio_url', '')
+                )
+                # Handle resume file upload
+                if request.FILES.get('resume'):
+                    application.resume = request.FILES['resume']
+                application.save()
+                
+                messages.success(request, f'✅ Your application for {job.title} has been submitted successfully!')
+                return redirect('job_detail', job_id=job.id)
+                
+            except Exception as e:
+                messages.error(request, f'❌ Error submitting application: {str(e)}')
+                return redirect('job_detail', job_id=job.id)
+    
+    context = {
+        'job': job,
+        'related_jobs': related_jobs,
+    }
+    
+    return render(request, 'jobs/job_detail.html', context)
 
 
 # ============================================================
@@ -100,8 +152,8 @@ def secret_trigger_scraper(request):
         return HttpResponse("Unauthorized access.", status=403)
         
     try:
-        scale_database_to_thousands()
-        return HttpResponse("🚀 Database successfully scaled to 1,000+ live jobs!", status=200)
+        result = scale_database_to_thousands()
+        return HttpResponse(f"🚀 {result}", status=200)
     except Exception as e:
         return HttpResponse(f"⚠️ Error running scraper: {str(e)}", status=500)
 
@@ -124,6 +176,8 @@ def debug_jobs(request):
             <li>Title: {first_job.title}</li>
             <li>Company: {first_job.company_name}</li>
             <li>Created: {first_job.created_at}</li>
+            <li>Has Responsibilities: {bool(first_job.responsibilities)}</li>
+            <li>Has Requirements: {bool(first_job.requirements)}</li>
         </ul>
         """
     else:
@@ -154,20 +208,32 @@ def category_debug(request):
 
 
 # ============================================================
-# SITEMAP & ROBOTS
+# SITEMAP & ROBOTS (ENHANCED)
 # ============================================================
 
 def generate_sitemap(request):
-    """Dynamic sitemap - always shows current jobs"""
+    """Dynamic sitemap - always shows current jobs with lastmod dates"""
     jobs = JobListing.objects.all()
     
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     
-    xml += '<url>\n<loc>https://globalgigs-0096.onrender.com/</loc>\n<changefreq>daily</changefreq>\n<priority>1.0</priority>\n</url>\n'
+    # Homepage
+    xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/</loc>
+    <lastmod>{jobs.first().created_at.strftime("%Y-%m-%d") if jobs.exists() else "2026-01-01"}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+</url>\n'''
     
+    # Job pages
     for job in jobs:
-        xml += f'<url>\n<loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>\n<changefreq>daily</changefreq>\n<priority>0.8</priority>\n</url>\n'
+        xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
+    <lastmod>{job.created_at.strftime("%Y-%m-%d")}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+</url>\n'''
     
     xml += '</urlset>'
     return HttpResponse(xml, content_type='application/xml')
@@ -179,6 +245,40 @@ Allow: /
 
 Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
     return HttpResponse(content, content_type='text/plain')
+
+
+# ============================================================
+# ENRICH EXISTING JOBS
+# ============================================================
+
+def enrich_jobs_endpoint(request):
+    """Endpoint to enrich all jobs with structured content"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    
+    from .scraper import parse_job_sections
+    jobs = JobListing.objects.all()
+    count = 0
+    errors = 0
+    
+    for job in jobs:
+        if job.description:
+            try:
+                parsed, clean_desc = parse_job_sections(job.description)
+                if parsed:
+                    job.responsibilities = parsed.get('responsibilities', '')
+                    job.requirements = parsed.get('requirements', '')
+                    job.benefits = parsed.get('benefits', '')
+                    job.company_description = parsed.get('about_company', '')
+                    job.save()
+                    count += 1
+                    print(f"✅ Enriched: {job.title[:50]}... at {job.company_name}")
+            except Exception as e:
+                errors += 1
+                print(f"⚠️ Error on job {job.id}: {e}")
+    
+    return HttpResponse(f"✅ Enriched {count} jobs. Errors: {errors}")
 
 
 # ============================================================
@@ -308,52 +408,6 @@ def paystack_webhook(request):
     except Exception as e:
         return HttpResponse(status=400)
 
-def create_categories_production(request):
-    """Create categories on production database"""
-    key = request.GET.get('key')
-    if key != 'candy2026':
-        return HttpResponse("Unauthorized", status=403)
-    
-    from .models import JobCategory
-    categories = [
-        ('Technology', 'technology', '💻'),
-        ('Marketing', 'marketing', '📊'),
-        ('Sales', 'sales', '🤝'),
-        ('Healthcare', 'healthcare', '🏥'),
-        ('Finance', 'finance', '💰'),
-        ('Education', 'education', '📚'),
-        ('Administrative', 'administrative', '📋'),
-        ('Customer Service', 'customer-service', '🎧'),
-        ('Design', 'design', '🎨'),
-        ('Engineering', 'engineering', '🔧'),
-        ('HR', 'hr', '👥'),
-        ('Legal', 'legal', '⚖️'),
-        ('Operations', 'operations', '📦'),
-        ('Data', 'data', '📊'),
-        ('Product', 'product', '📱'),
-        ('Writing', 'writing', '✍️'),
-        ('Consulting', 'consulting', '💡'),
-        ('Real Estate', 'real-estate', '🏠'),
-        ('Media', 'media', '🎬'),
-    ]
-    
-    created = 0
-    for name, slug, icon in categories:
-        obj, is_new = JobCategory.objects.get_or_create(name=name, slug=slug, icon=icon)
-        if is_new:
-            created += 1
-    
-    return HttpResponse(f"✅ Created {created} new categories on production. Total: {JobCategory.objects.count()}")
-
-def categorize_jobs_production(request):
-    """Categorize jobs on production database"""
-    key = request.GET.get('key')
-    if key != 'candy2026':
-        return HttpResponse("Unauthorized", status=403)
-    
-    from .categorizer import auto_categorize_jobs
-    count = auto_categorize_jobs()
-    return HttpResponse(f"✅ Categorized {count} jobs on production")
 
 def create_categories_production(request):
     """Create categories on production database"""
@@ -361,7 +415,6 @@ def create_categories_production(request):
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
     
-    from .models import JobCategory
     categories = [
         ('Technology', 'technology', '💻'),
         ('Marketing', 'marketing', '📊'),
@@ -467,7 +520,6 @@ def simple_categorize(request):
         return HttpResponse("Unauthorized", status=403)
     
     from .models import JobListing, JobCategory
-    import re
     
     categories = JobCategory.objects.all()
     category_map = {cat.name.lower(): cat for cat in categories}
