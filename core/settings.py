@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-47!tq+2e5$)r_66=^@-ne80bm$o!dntn$ugnx9-$m%1a1x(jcc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False 
 
 ALLOWED_HOSTS = ['*']
 
@@ -123,8 +123,7 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
 # ========== PAYSTACK PAYMENT CONFIGURATION ==========
-PAYSTACK_PUBLIC_KEY = 'pk_test_ba9497023465711cc9a0b6901fbabe3f98d1336c'
-PAYSTACK_SECRET_KEY = 'sk_test_422c17eb89f5e6bbd3f74c068e472c639e9451f2'
+PAYSTACK_PUBLIC_KEY = 'pk_live_328fbc356bc8296971837ab459f67b94f8f11e89'
+PAYSTACK_SECRET_KEY = 'sk_live_9c00cdce734243f304a6acb8f18c1045a794d86d'  # Click "Reveal" in Paystack dashboard
 PAYSTACK_CALLBACK_URL = 'https://globalgigs-0096.onrender.com/payment/callback/'
