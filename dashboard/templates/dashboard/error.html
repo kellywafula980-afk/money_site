@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Error</title>
+</head>
+<body>
+    <h1>Dashboard Error</h1>
+    <p>An error occurred:</p>
+    <pre>{{ error }}</pre>
+    <p><a href="{% url 'dashboard:my_jobs' %}">Try My Jobs</a></p>
+    <!-- ✅ FIXED: Logout as POST form -->
+    <form method="post" action="{% url 'logout' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" style="background: none; border: none; color: blue; text-decoration: underline; cursor: pointer;">
+            Logout
+        </button>
+    </form>
+</body>
+</html>

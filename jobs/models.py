@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django.conf import settings
 
 
 class ScriptBatch(models.Model):
@@ -62,6 +63,18 @@ class JobListing(models.Model):
     )
     location = models.CharField(max_length=100, default="Remote")
     apply_url = models.URLField(max_length=500, unique=True)
+    
+    # ============================================================
+    # 👤 USER RELATIONSHIP - ADD THIS
+    # ============================================================
+    posted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='posted_jobs'
+    )
+    is_active = models.BooleanField(default=True)
     
     # ============================================================
     # 🆕 RICH CONTENT FIELDS (For Better SEO & User Experience)
@@ -237,3 +250,13 @@ class JobApplication(models.Model):
             models.Index(fields=['email']),
             models.Index(fields=['is_reviewed']),
         ]
+
+    # ============================================================
+    # 📊 ANALYTICS
+    # ============================================================
+    views_count = models.IntegerField(default=0, help_text="Number of times this job has been viewed")
+    
+    def increment_views(self):
+        """Increment the view count by 1"""
+        self.views_count += 1
+        self.save(update_fields=['views_count'])

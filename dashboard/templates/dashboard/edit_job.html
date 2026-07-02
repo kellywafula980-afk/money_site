@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Job - GlobalGigs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card card-custom">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">✏️ Edit Job: {{ job.title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <strong>Please fix the following errors:</strong>
+                                {{ form.errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Job Title *</label>
+                            <input type="text" name="title" class="form-control" value="{{ job.title }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Company Name *</label>
+                            <input type="text" name="company_name" class="form-control" value="{{ job.company_name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Location *</label>
+                            <input type="text" name="location" class="form-control" value="{{ job.location }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Description *</label>
+                            <textarea name="description" class="form-control" rows="5" required>{{ job.description }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Salary Range</label>
+                            <input type="text" name="salary_range" class="form-control" value="{{ job.salary_range|default:'' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Application URL</label>
+                            <input type="url" name="apply_url" class="form-control" value="{{ job.apply_url|default:'' }}">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Employment Type</label>
+                                <select name="employment_type" class="form-control">
+                                    <option value="">Select...</option>
+                                    <option value="Full-time" {% if job.employment_type == "Full-time" %}selected{% endif %}>Full-time</option>
+                                    <option value="Part-time" {% if job.employment_type == "Part-time" %}selected{% endif %}>Part-time</option>
+                                    <option value="Contract" {% if job.employment_type == "Contract" %}selected{% endif %}>Contract</option>
+                                    <option value="Freelance" {% if job.employment_type == "Freelance" %}selected{% endif %}>Freelance</option>
+                                    <option value="Internship" {% if job.employment_type == "Internship" %}selected{% endif %}>Internship</option>
+                                    <option value="Remote" {% if job.employment_type == "Remote" %}selected{% endif %}>Remote</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Experience Level</label>
+                                <select name="experience_level" class="form-control">
+                                    <option value="">Select...</option>
+                                    <option value="Entry Level" {% if job.experience_level == "Entry Level" %}selected{% endif %}>Entry Level</option>
+                                    <option value="Mid-Level" {% if job.experience_level == "Mid-Level" %}selected{% endif %}>Mid-Level</option>
+                                    <option value="Senior" {% if job.experience_level == "Senior" %}selected{% endif %}>Senior</option>
+                                    <option value="Lead" {% if job.experience_level == "Lead" %}selected{% endif %}>Lead</option>
+                                    <option value="Manager" {% if job.experience_level == "Manager" %}selected{% endif %}>Manager</option>
+                                    <option value="Director" {% if job.experience_level == "Director" %}selected{% endif %}>Director</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_featured" class="form-check-input" id="is_featured" {% if job.is_featured %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_featured">⭐ Feature this job</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_premium" class="form-check-input" id="is_premium" {% if job.is_premium %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_premium">💎 Premium Listing</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary-custom">💾 Update Job</button>
+                            <a href="{% url 'dashboard:my_jobs' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

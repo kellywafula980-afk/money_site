@@ -24,20 +24,15 @@ def job_list_view(request):
     category_slug = request.GET.get('category', '')
     
     # Start with all jobs
-    jobs = JobListing.objects.all().order_by('-id')
+    jobs = JobListing.objects.filter(is_active=True).order_by('-id')
     
-    # 🏷️ FILTER BY CATEGORY (checks database for jobs in that category)
+    # 🏷️ FILTER BY CATEGORY
     if category_slug:
         try:
-            # Get the category from database
             category = JobCategory.objects.get(slug=category_slug)
-            # Filter jobs to only those with this category
             jobs = jobs.filter(category=category)
-            print(f"🔍 Filtering jobs by category: {category.name} (found {jobs.count()} jobs)")
         except JobCategory.DoesNotExist:
-            # If category doesn't exist, return empty results
             jobs = JobListing.objects.none()
-            print(f"❌ Category '{category_slug}' not found")
     
     # 🔍 FILTER BY SEARCH QUERY
     if query:
@@ -61,22 +56,19 @@ def job_list_view(request):
     return render(request, 'jobs/home.html', context)
 
 
-# URL Aliases
 homepage_job_board = job_list_view
 content_batcher_dashboard = job_list_view
 
 
 # ============================================================
-# JOB DETAIL & APPLICATIONS (ENHANCED VERSION)
+# JOB DETAIL & APPLICATIONS
 # ============================================================
 
 def job_detail_view(request, job_id):
     """Display a single job listing with application form and structured content"""
-    job = get_object_or_404(JobListing, id=job_id)
+    job = get_object_or_404(JobListing, id=job_id, is_active=True)
     
-    # ============================================================
-    # 🔥 ENHANCEMENT: Parse structured sections from description
-    # ============================================================
+    # Parse structured sections from description
     if not job.responsibilities and job.description:
         try:
             parsed, clean_desc = parse_job_sections(job.description)
@@ -86,18 +78,14 @@ def job_detail_view(request, job_id):
                 job.benefits = parsed.get('benefits', '')
                 job.company_description = parsed.get('about_company', '')
                 job.save()
-                print(f"✅ Enriched job: {job.title[:50]}... at {job.company_name}")
         except Exception as e:
             print(f"⚠️ Error parsing job {job.id}: {e}")
     
-    # ============================================================
-    # 🔥 ENHANCEMENT: Related jobs for internal linking
-    # ============================================================
+    # Related jobs
     related_jobs = JobListing.objects.filter(
         category=job.category
     ).exclude(id=job.id)[:6] if job.category else []
     
-    # If no related jobs by category, get by similar title
     if not related_jobs and job.title:
         title_words = job.title.split()[:3]
         if title_words:
@@ -106,11 +94,8 @@ def job_detail_view(request, job_id):
                 Q(company_name__icontains=job.company_name[:20])
             ).exclude(id=job.id)[:6]
     
-    # ============================================================
-    # HANDLE APPLICATION SUBMISSION
-    # ============================================================
+    # Handle application submission
     if request.method == 'POST':
-        # Check if this is an application submission
         if 'full_name' in request.POST and 'email' in request.POST:
             try:
                 application = JobApplication(
@@ -121,7 +106,6 @@ def job_detail_view(request, job_id):
                     cover_letter=request.POST.get('cover_letter'),
                     portfolio_url=request.POST.get('portfolio_url', '')
                 )
-                # Handle resume file upload
                 if request.FILES.get('resume'):
                     application.resume = request.FILES['resume']
                 application.save()
@@ -139,6 +123,51 @@ def job_detail_view(request, job_id):
     }
     
     return render(request, 'jobs/job_detail.html', context)
+
+
+# ============================================================
+# ROBOTS.TXT
+# ============================================================
+
+def robots_txt(request):
+    """Robots.txt file for search engines"""
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
+    return HttpResponse(content, content_type='text/plain')
+
+
+# ============================================================
+# SITEMAP
+# ============================================================
+
+def generate_sitemap(request):
+    """Dynamic sitemap with all job URLs for Google SEO"""
+    jobs = JobListing.objects.filter(is_active=True).order_by('-created_at')
+    
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    
+    # Homepage
+    xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/</loc>
+    <lastmod>{jobs.first().created_at.strftime("%Y-%m-%d") if jobs.exists() else "2026-01-01"}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+</url>\n'''
+    
+    # Job pages
+    for job in jobs:
+        xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
+    <lastmod>{job.created_at.strftime("%Y-%m-%d")}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+</url>\n'''
+    
+    xml += '</urlset>'
+    return HttpResponse(xml, content_type='application/xml')
 
 
 # ============================================================
@@ -208,46 +237,6 @@ def category_debug(request):
 
 
 # ============================================================
-# SITEMAP & ROBOTS (ENHANCED)
-# ============================================================
-
-def generate_sitemap(request):
-    """Dynamic sitemap - always shows current jobs with lastmod dates"""
-    jobs = JobListing.objects.all()
-    
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    
-    # Homepage
-    xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/</loc>
-    <lastmod>{jobs.first().created_at.strftime("%Y-%m-%d") if jobs.exists() else "2026-01-01"}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-</url>\n'''
-    
-    # Job pages
-    for job in jobs:
-        xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
-    <lastmod>{job.created_at.strftime("%Y-%m-%d")}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-</url>\n'''
-    
-    xml += '</urlset>'
-    return HttpResponse(xml, content_type='application/xml')
-
-
-def robots_txt(request):
-    content = """User-agent: *
-Allow: /
-
-Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
-    return HttpResponse(content, content_type='text/plain')
-
-
-# ============================================================
 # ENRICH EXISTING JOBS
 # ============================================================
 
@@ -273,10 +262,8 @@ def enrich_jobs_endpoint(request):
                     job.company_description = parsed.get('about_company', '')
                     job.save()
                     count += 1
-                    print(f"✅ Enriched: {job.title[:50]}... at {job.company_name}")
             except Exception as e:
                 errors += 1
-                print(f"⚠️ Error on job {job.id}: {e}")
     
     return HttpResponse(f"✅ Enriched {count} jobs. Errors: {errors}")
 
@@ -369,6 +356,7 @@ def payment_callback(request):
                     apply_url='#',
                     is_approved=True,
                     is_featured=True,
+                    is_active=True,
                 )
                 del request.session['pending_job']
                 messages.success(request, f'✅ Payment successful! Your job "{job.title}" is now live!')
@@ -568,3 +556,45 @@ def simple_categorize(request):
             categorized += 1
     
     return HttpResponse(f"✅ Categorized {categorized} out of {total} jobs")
+from django.http import FileResponse, Http404
+import os
+from django.conf import settings
+from urllib.parse import unquote
+
+def serve_media_file(request, file_path):
+    """Directly serve media files"""
+    # Decode URL-encoded path
+    file_path = unquote(file_path)
+    
+    # Construct the full file path
+    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+    
+    # Security check: ensure the path is within MEDIA_ROOT
+    if not full_path.startswith(os.path.abspath(settings.MEDIA_ROOT)):
+        raise Http404("Access denied")
+    
+    # Check if the file exists
+    if os.path.exists(full_path) and os.path.isfile(full_path):
+        # Determine content type based on file extension
+        if full_path.endswith('.pdf'):
+            content_type = 'application/pdf'
+        elif full_path.endswith('.doc'):
+            content_type = 'application/msword'
+        elif full_path.endswith('.docx'):
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif full_path.endswith('.jpg') or full_path.endswith('.jpeg'):
+            content_type = 'image/jpeg'
+        elif full_path.endswith('.png'):
+            content_type = 'image/png'
+        else:
+            content_type = 'application/octet-stream'
+        
+        # Open and return the file
+        try:
+            response = FileResponse(open(full_path, 'rb'), content_type=content_type)
+            response['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
+            return response
+        except Exception as e:
+            raise Http404(f"Error opening file: {str(e)}")
+    
+    raise Http404("File not found")

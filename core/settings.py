@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'jobs',
+    'dashboard',
     'django.contrib.sitemaps',
 ]
 
@@ -45,7 +46,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # ✅ Added templates directory
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -107,7 +108,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# ========== STATIC FILES (CSS, JavaScript, Images) ==========
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -123,7 +124,18 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+
 # ========== PAYSTACK PAYMENT CONFIGURATION ==========
 PAYSTACK_PUBLIC_KEY = 'pk_live_328fbc356bc8296971837ab459f67b94f8f11e89'
-PAYSTACK_SECRET_KEY = 'sk_live_9c00cdce734243f304a6acb8f18c1045a794d86d'  # Click "Reveal" in Paystack dashboard
+PAYSTACK_SECRET_KEY = 'sk_live_9c00cdce734243f304a6acb8f18c1045a794d86d'
 PAYSTACK_CALLBACK_URL = 'https://globalgigs-0096.onrender.com/payment/callback/'
+
+
+# ========== AUTHENTICATION SETTINGS ==========
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard:home'
+LOGOUT_REDIRECT_URL = 'home'
+
+
+# ========== DEFAULT AUTO FIELD ==========
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

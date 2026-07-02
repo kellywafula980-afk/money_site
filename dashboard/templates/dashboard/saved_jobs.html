@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Jobs - GlobalGigs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="h2 mb-4">⭐ Saved Jobs</h1>
+    
+    <div class="card card-custom">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Jobs You've Saved</h5>
+        </div>
+        <div class="card-body">
+            {% if saved %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Job Title</th>
+                                <th>Company</th>
+                                <th>Saved</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in saved %}
+                            <tr>
+                                <td><strong>{{ item.job.title }}</strong></td>
+                                <td>{{ item.job.company_name }}</td>
+                                <td>{{ item.saved_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <a href="{% url 'job_detail' item.job.id %}" class="btn btn-sm btn-primary">View</a>
+                                    <button class="btn btn-sm btn-danger">Remove</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No saved jobs yet.</p>
+                    <p>Browse jobs and click the save button to save them here.</p>
+                    <a href="/" class="btn btn-primary-custom">Browse Jobs</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

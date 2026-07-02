@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GlobalGigs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-zinc-100 min-h-screen font-sans antialiased flex items-center justify-center">
+    <div class="w-full max-w-md px-4">
+        <div class="text-center mb-8">
+            <a href="/" class="text-2xl font-black tracking-tighter text-white">
+                <span class="text-emerald-500">GLOBAL</span><span class="text-emerald-400">GIGS</span>
+            </a>
+            <h2 class="text-xl font-bold text-white mt-4">Sign In</h2>
+            <p class="text-zinc-400 text-sm">Access your employer dashboard</p>
+        </div>
+        
+        <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-6 md:p-8">
+            {% if form.errors %}
+                <div class="mb-4 p-3 bg-red-950/30 border border-red-800 rounded-xl text-red-400 text-sm">
+                    Invalid username or password.
+                </div>
+            {% endif %}
+            
+            {% if next %}
+                <div class="mb-4 p-3 bg-blue-950/30 border border-blue-800 rounded-xl text-blue-400 text-sm">
+                    Please login to access the dashboard.
+                </div>
+            {% endif %}
+            
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1">Username</label>
+                        <input type="text" name="username" class="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition" placeholder="Enter your username" required autofocus>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1">Password</label>
+                        <input type="password" name="password" class="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition" placeholder="Enter your password" required>
+                    </div>
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-500/20">
+                        Sign In
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-6 text-center text-sm">
+                <p class="text-zinc-500">Don't have an account? <a href="{% url 'signup' %}" class="text-emerald-400 hover:text-emerald-300 transition">Sign Up</a></p>
+                <p class="mt-2"><a href="/" class="text-zinc-600 hover:text-zinc-400 transition">← Back to Home</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

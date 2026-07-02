@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GlobalGigs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-card h2 {
+            color: #333;
+            font-weight: 700;
+        }
+        .login-card .form-control {
+            border-radius: 10px;
+            padding: 12px 20px;
+        }
+        .login-card .btn-primary {
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: 600;
+        }
+        .login-card .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="login-card">
+                    <div class="text-center mb-4">
+                        <h2>💼 GlobalGigs</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> Invalid username or password.
+                        </div>
+                    {% endif %}
+                    
+                    {% if next %}
+                        <div class="alert alert-info">
+                            Please login to access the dashboard.
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'login' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" name="username" id="username" class="form-control" placeholder="Enter your username" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" name="password" id="password" class="form-control" placeholder="Enter your password" required>
+                        </div>
+                        <input type="hidden" name="next" value="{{ next }}">
+                        <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <p>Don't have an account? <a href="{% url 'signup' %}">Sign Up</a></p>
+                        <p><a href="/" class="text-muted">← Back to Home</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

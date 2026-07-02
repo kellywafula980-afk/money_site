@@ -1,6 +1,32 @@
-venv/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.log
 
+# Django
+db.sqlite3
+db.sqlite3-journal
+media/
 staticfiles/
+*.sqlite3
+
+# Environment variables
 .env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Misc
+*.pid
+*.lock
+*.process
