@@ -127,7 +127,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ========== PAYSTACK PAYMENT CONFIGURATION ==========
 PAYSTACK_PUBLIC_KEY = 'pk_live_328fbc356bc8296971837ab459f67b94f8f11e89'
-PAYSTACK_SECRET_KEY = 'sk_live_9c00cdce734243f304a6acb8f18c1045a794d86d'
+PAYSTACK_SECRET_KEY = 'sk_live_f7cd1d85caea729a7e1230092a226d019a8c35b5'
 PAYSTACK_CALLBACK_URL = 'https://globalgigs-0096.onrender.com/payment/callback/'
 
 
