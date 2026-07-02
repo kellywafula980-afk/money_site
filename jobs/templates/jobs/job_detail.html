@@ -32,13 +32,13 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- JSON-LD Structured Data for Google Jobs - Fixed Version -->
+<!-- JSON-LD Structured Data for Google Jobs -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org/",
   "@type": "JobPosting",
   "title": "{{ job.title|escapejs }}",
-  "description": "{{ job.description|escapejs|slice:":4000" }}",
+  "description": "{{ job.description|striptags|escapejs|slice:":4000" }}",
   "identifier": {
     "@type": "PropertyValue",
     "name": "GlobalGigs",
