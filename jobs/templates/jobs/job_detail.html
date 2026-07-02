@@ -32,7 +32,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- JSON-LD Structured Data for Google Jobs -->
+<!-- JSON-LD Structured Data for Google Jobs - Fixed Version -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org/",
@@ -45,36 +45,33 @@
     "value": "{{ job.id }}"
   },
   "datePosted": "{{ job.created_at|date:'Y-m-d' }}",
-  "validThrough": "{{ job.created_at|date:'Y-m-d'|add:'365 days' }}",
+  "validThrough": "{{ job.created_at|date:'Y-m-d' }}",
   "employmentType": "{{ job.employment_type|default:'FULL_TIME'|upper }}",
   "hiringOrganization": {
     "@type": "Organization",
-    "name": "{{ job.company_name|escapejs }}",
-    "sameAs": "{{ job.company_website|default:'' }}"
+    "name": "{{ job.company_name|escapejs }}"
   },
   "jobLocation": {
     "@type": "Place",
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": "{{ job.location|escapejs }}",
       "addressLocality": "{{ job.location|escapejs }}",
+      "addressRegion": "{{ job.location|escapejs }}",
+      "postalCode": "00000",
       "addressCountry": "Worldwide"
     }
   },
-  {% if job.salary_range %}
   "baseSalary": {
     "@type": "MonetaryAmount",
     "currency": "USD",
     "value": {
       "@type": "QuantitativeValue",
-      "minValue": {{ job.salary_range|cut:'$'|cut:','|cut:' '|cut:'-'|cut:'k'|default:'40000' }},
-      "maxValue": {{ job.salary_range|cut:'$'|cut:','|cut:' '|cut:'-'|cut:'k'|default:'80000' }},
+      "minValue": 40000,
+      "maxValue": 80000,
       "unitText": "YEAR"
     }
   },
-  {% endif %}
-  "jobBenefits": "{{ job.benefits|escapejs|default:'' }}",
-  "qualifications": "{{ job.requirements|escapejs|default:'' }}",
-  "responsibilities": "{{ job.responsibilities|escapejs|default:'' }}",
   "workHours": "{{ job.employment_type|default:'Full-time' }}",
   "url": "{{ request.build_absolute_uri }}",
   "applicantLocationRequirements": {
