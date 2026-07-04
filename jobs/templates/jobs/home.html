@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlobalGigs — High-Paying Remote Jobs & AI Gigs</title>
     
+    <!-- ✅ SEO Meta Tags -->
+    <meta name="description" content="Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Fresh global opportunities scraped and updated live every single day. Start your dream career today!">
+    <meta name="keywords" content="remote jobs, AI gigs, work from home, freelance jobs, global jobs, tech jobs, data entry, developer jobs, Nairobi jobs, Kenya jobs">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="GlobalGigs">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="1 day">
+    
+    <!-- ✅ Open Graph / Social Media Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://globalgigs-0096.onrender.com/">
+    <meta property="og:title" content="GlobalGigs — High-Paying Remote Jobs & AI Gigs">
+    <meta property="og:description" content="Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Fresh global opportunities scraped and updated live every single day.">
+    <meta property="og:image" content="https://globalgigs-0096.onrender.com/static/og-image.png">
+    <meta property="og:site_name" content="GlobalGigs">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- ✅ Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="GlobalGigs — High-Paying Remote Jobs & AI Gigs">
+    <meta name="twitter:description" content="Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Updated daily with fresh global opportunities.">
+    <meta name="twitter:image" content="https://globalgigs-0096.onrender.com/static/og-image.png">
+    <meta name="twitter:site" content="@globalgigs">
+    <meta name="twitter:creator" content="@globalgigs">
+    
+    <!-- ✅ Additional SEO Tags -->
+    <link rel="canonical" href="https://globalgigs-0096.onrender.com/">
+    <meta name="theme-color" content="#10b981">
+    
     <!-- AADS Bot Crawler Verification Meta Tag -->
     <meta name="aads-verification" content="2442514">
     
@@ -20,6 +49,9 @@
                 <span class="text-emerald-500">GLOBAL</span><span class="text-emerald-400">GIGS</span>
             </a>
             <div class="flex items-center gap-4">
+                <a href="{% url 'about' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">
+                    About
+                </a>
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard:home' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">
                         Dashboard
@@ -27,7 +59,6 @@
                     <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
                         Post Job
                     </a>
-                    <!-- ✅ FIXED: Logout as POST form -->
                     <form method="post" action="{% url 'logout' %}" class="inline" style="display: inline;">
                         {% csrf_token %}
                         <button type="submit" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition bg-transparent border-0 cursor-pointer">
@@ -174,6 +205,8 @@
                 © 2026 GlobalGigs Inc. Automated Content Delivery System.
             </div>
             <div class="flex gap-4">
+                <a href="{% url 'about' %}" class="hover:text-zinc-400 transition">About</a>
+                <span>•</span>
                 <a href="/admin/" class="hover:text-zinc-400 transition">Console Access</a>
                 <span>•</span>
                 <span class="text-zinc-500">Tracking Active: kellywafula_gigs</span>
