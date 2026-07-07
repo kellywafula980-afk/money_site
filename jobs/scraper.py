@@ -2,7 +2,9 @@ import requests
 import html
 import time
 import re
-from .models import JobListing
+from datetime import timedelta
+from django.utils import timezone
+from .models import JobListing, JobCategory
 
 def clean_text(text):
     if not text: 
@@ -10,20 +12,52 @@ def clean_text(text):
     text = html.unescape(text)
     return text.strip()
 
+def is_relevant_job(title, description, company_name=""):
+    """Filter out spam, irrelevant, or low-quality jobs"""
+    if not description or len(description) < 100:
+        return False
+    
+    text = f"{title} {description} {company_name}".lower()
+    banned_keywords = [
+        'amazon billing', 'amazon payment', 'amazon card', 'update payment',
+        'crypto', 'bitcoin', 'ethereum', 'dogecoin', 'wallet',
+        'earn money fast', 'make money online', 'passive income',
+        'forex trading', 'binary options', 'get rich quick',
+        'paypal billing', 'free money', 'instant cash',
+        'survey', 'referral', 'affiliate marketing',
+        'work for free', 'unpaid internship', 'volunteer'
+    ]
+    
+    for keyword in banned_keywords:
+        if keyword in text:
+            return False
+    
+    words = text.split()
+    if len(words) > 0:
+        word_count = {}
+        for word in words:
+            if len(word) > 3:
+                word_count[word] = word_count.get(word, 0) + 1
+        
+        threshold = len(words) * 0.2
+        for count in word_count.values():
+            if count > threshold and count > 10:
+                return False
+    
+    return True
+
 def extract_salary(text):
-    """Try to extract salary from job description or title"""
+    """Extract salary from text, return None if not found"""
     if not text:
         return None
     
-    # Common salary patterns
     patterns = [
-        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*\$(\d{2,3}[,.]?\d{3})',  # $50,000 - $80,000
-        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',   # $50,000 - 80,000
-        r'(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',     # 50,000 - 80,000
-        r'\$(\d{2,3}[,.]?\d{3})\+',                               # $50,000+
-        r'\$(\d{2,3}[,.]?\d{3})',                                 # $50,000
-        r'(\d{2,3}[,.]?\d{3})\s*(?:per year|annually|yearly)',   # 50,000 per year
-        r'(\d{2,3}[,.]?\d{3})\s*(?:-)\s*(\d{2,3}[,.]?\d{3})',    # 50,000 - 80,000
+        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*\$(\d{2,3}[,.]?\d{3})',
+        r'\$(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',
+        r'(\d{2,3}[,.]?\d{3})\s*[-–]\s*(\d{2,3}[,.]?\d{3})',
+        r'\$(\d{2,3}[,.]?\d{3})\+',
+        r'\$(\d{2,3}[,.]?\d{3})',
+        r'(\d{2,3}[,.]?\d{3})\s*(?:per year|annually|yearly)',
     ]
     
     for pattern in patterns:
@@ -36,8 +70,57 @@ def extract_salary(text):
     
     return None
 
+def assign_category_to_job(job):
+    """Automatically assign a category to a job based on keywords"""
+    if not job:
+        return None
+    
+    categories = JobCategory.objects.all()
+    if not categories.exists():
+        return None
+    
+    text = f"{job.title} {job.description}".lower()
+    
+    category_keywords = {
+        'Technology': ['software', 'developer', 'engineer', 'programming', 'code', 'it', 'tech', 'cloud', 'data', 'ai', 'python', 'java', 'javascript', 'react', 'django', 'fullstack', 'backend', 'frontend', 'devops', 'cyber', 'security', 'network'],
+        'Marketing': ['marketing', 'seo', 'social media', 'content', 'brand', 'digital', 'ppc', 'advertising', 'growth', 'campaign'],
+        'Sales': ['sales', 'account executive', 'business development', 'sales rep', 'sales manager', 'account manager'],
+        'Healthcare': ['health', 'medical', 'doctor', 'nurse', 'clinical', 'patient', 'care', 'healthcare', 'pharmacy', 'wellness'],
+        'Finance': ['finance', 'accountant', 'financial', 'banking', 'investment', 'tax', 'audit', 'controller', 'treasury'],
+        'Education': ['teacher', 'education', 'training', 'instructor', 'curriculum', 'academic', 'tutor'],
+        'Administrative': ['administrative', 'assistant', 'office', 'coordinator', 'receptionist', 'admin'],
+        'Customer Service': ['customer service', 'support', 'customer success', 'help desk', 'call center'],
+        'Design': ['designer', 'design', 'ui', 'ux', 'graphic', 'creative', 'visual', 'artist'],
+        'Engineering': ['mechanical', 'electrical', 'civil', 'construction', 'architect', 'structural'],
+        'HR': ['human resources', 'hr', 'recruitment', 'recruiter', 'talent', 'people operations'],
+        'Legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance', 'regulatory'],
+        'Operations': ['operations', 'supply chain', 'logistics', 'procurement', 'inventory', 'warehouse'],
+        'Data': ['data scientist', 'data analyst', 'data engineer', 'business intelligence', 'analytics'],
+        'Product': ['product manager', 'product owner', 'product management', 'product development'],
+        'Writing': ['writer', 'editor', 'content', 'copywriter', 'journalist', 'author'],
+        'Consulting': ['consultant', 'consulting', 'advisory', 'strategy'],
+        'Real Estate': ['real estate', 'property', 'realtor', 'broker'],
+        'Media': ['media', 'video', 'content creator', 'influencer', 'broadcast', 'production'],
+    }
+    
+    best_category = None
+    best_score = 0
+    
+    for cat_name, keywords in category_keywords.items():
+        score = sum(1 for kw in keywords if kw in text)
+        if score > best_score:
+            best_score = score
+            best_category = categories.filter(name=cat_name).first()
+    
+    if best_category and best_score >= 2:
+        job.category = best_category
+        job.save()
+        return best_category
+    
+    return None
+
 def parse_job_sections(text):
-    """Extract structured sections from job description - Enhanced Version"""
+    """Extract structured sections from job description without mutating text"""
     if not text:
         return {}, text
     
@@ -48,30 +131,27 @@ def parse_job_sections(text):
         'about_company': ''
     }
     
-    # More comprehensive patterns with common section headers
+    description_text = text
+    
     patterns = {
         'responsibilities': r'(?:what you\'ll do|responsibilities|key responsibilities|role overview|duties|job duties|your role|the role|about the role)[:：\s\n]+([^\n]+(?:\n[^\n]+)*?)(?=\n\s*(?:requirements|qualifications|what you\'ll have|you have|benefits|about|$))',
         'requirements': r'(?:what you\'ll have|requirements|qualifications|what you\'ll need|skills|you have|we\'re looking for|required|you bring)[:：\s\n]+([^\n]+(?:\n[^\n]+)*?)(?=\n\s*(?:responsibilities|benefits|about|$))',
         'benefits': r'(?:benefits|perks|what we offer|why join)[:：\s\n]+([^\n]+(?:\n[^\n]+)*?)(?=\n\s*(?:requirements|about|$))',
-        'about_company': r'(?:more about us|about us|about the company|company description|who we are|our story|why o9|more about)[:：\s\n]+([^\n]+(?:\n[^\n]+)*?)(?=$)',
+        'about_company': r'(?:more about us|about us|about the company|company description|who we are|our story|more about)[:：\s\n]+([^\n]+(?:\n[^\n]+)*?)(?=$)',
     }
     
     for key, pattern in patterns.items():
-        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        match = re.search(pattern, description_text, re.IGNORECASE | re.DOTALL)
         if match:
             sections[key] = match.group(1).strip()
-            # Remove extracted section from main text to avoid duplication
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL)
     
-    # Special handling: Look for bullet points that might be responsibilities/requirements
-    if not sections['responsibilities'] and text:
-        # Look for lists with dashes or numbers
+    if not sections['responsibilities'] and description_text:
         bullet_pattern = r'[•·-]\s*([^\n]+)'
-        bullets = re.findall(bullet_pattern, text)
+        bullets = re.findall(bullet_pattern, description_text)
         if bullets and len(bullets) > 3:
             sections['responsibilities'] = '\n• ' + '\n• '.join(bullets[:5])
     
-    return sections, text.strip()
+    return sections, description_text
 
 def enrich_job_with_sections(job):
     """Enrich a single job with parsed sections"""
@@ -93,21 +173,24 @@ def enrich_job_with_sections(job):
     return False
 
 def scale_database_to_thousands():
-    """Scrape jobs and extract real salaries with automatic enrichment"""
+    """Scrape jobs with quality filtering and automatic categorization"""
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GigsAggregator/1.0'}
     added_count = 0
     skipped_count = 0
+    filtered_count = 0
     enriched_count = 0
+    categorized_count = 0
     
-    existing_jobs = JobListing.objects.all()
+    cutoff = timezone.now() - timedelta(days=90)
+    existing_jobs = JobListing.objects.filter(created_at__gte=cutoff)
     existing_keys = set()
     for job in existing_jobs:
         key = f"{job.title.lower().strip()}|{job.company_name.lower().strip()}"
         existing_keys.add(key)
     
-    print(f"📊 Existing jobs: {len(existing_keys)}")
+    print(f"📊 Existing jobs (last 90 days): {len(existing_keys)}")
     
-    # PIPELINE 1: RemoteOK
+    # RemoteOK
     print("🌍 Fetching from RemoteOK...")
     try:
         response = requests.get("https://remoteok.com/api", headers=headers, timeout=15)
@@ -122,41 +205,48 @@ def scale_database_to_thousands():
                 if not title or not company:
                     continue
                 
+                description = job.get('description', '')
+                if not is_relevant_job(title, description, company):
+                    filtered_count += 1
+                    continue
+                
                 key = f"{title.lower()}|{company.lower()}"
                 if key not in existing_keys:
-                    # Get salary from job data
+                    # Extract salary - NO HARDCODED FALLBACK
                     salary = clean_text(job.get('salary', ''))
-                    description = job.get('description', '')
                     
-                    # If no salary in job data, try extracting from description
-                    if not salary or salary == '$40,000 - $80,000':
+                    if not salary:
                         extracted = extract_salary(description)
                         if extracted:
                             salary = extracted
+                        # If no salary found, leave as None (don't add hardcoded)
                     
-                    # Create the job
                     new_job = JobListing.objects.create(
                         title=title,
                         company_name=company,
                         location=clean_text(job.get('location', 'Remote')),
                         description=description,
                         apply_url=job.get('url', '#'),
-                        salary_range=salary or '$40,000 - $80,000'
+                        salary_range=salary,  # This will be None if no salary found
+                        is_active=True,
+                        is_approved=True,
                     )
                     
-                    # Enrich the job with structured sections
+                    if assign_category_to_job(new_job):
+                        categorized_count += 1
+                    
                     if enrich_job_with_sections(new_job):
                         enriched_count += 1
                     
                     added_count += 1
                     existing_keys.add(key)
-                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
+                    print(f"   ✅ Added: {title} at {company}")
                 else:
                     skipped_count += 1
     except Exception as e:
         print(f"⚠️ RemoteOK error: {e}")
     
-    # PIPELINE 2: Himalayas
+    # Himalayas
     print("🌍 Fetching from Himalayas...")
     offset = 0
     limit = 50
@@ -181,16 +271,21 @@ def scale_database_to_thousands():
                 if not title or not company:
                     continue
                 
+                description = job.get('description', '')
+                if not is_relevant_job(title, description, company):
+                    filtered_count += 1
+                    continue
+                
                 key = f"{title.lower()}|{company.lower()}"
                 if key not in existing_keys:
-                    # Himalayas sometimes has salaryRange
+                    # Extract salary - NO HARDCODED FALLBACK
                     salary = clean_text(job.get('salaryRange', ''))
-                    description = job.get('description', '')
                     
                     if not salary:
                         extracted = extract_salary(description)
                         if extracted:
                             salary = extracted
+                        # If no salary found, leave as None (don't add hardcoded)
                     
                     loc_restrictions = job.get('locationRestrictions', [])
                     location = ", ".join(loc_restrictions) if loc_restrictions else "Worldwide"
@@ -201,15 +296,20 @@ def scale_database_to_thousands():
                         location=location,
                         description=description,
                         apply_url=job.get('applicationLink', '#'),
-                        salary_range=salary or '$40,000 - $80,000'
+                        salary_range=salary,  # This will be None if no salary found
+                        is_active=True,
+                        is_approved=True,
                     )
+                    
+                    if assign_category_to_job(new_job):
+                        categorized_count += 1
                     
                     if enrich_job_with_sections(new_job):
                         enriched_count += 1
                     
                     added_count += 1
                     existing_keys.add(key)
-                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
+                    print(f"   ✅ Added: {title} at {company}")
                 else:
                     skipped_count += 1
                     
@@ -220,103 +320,15 @@ def scale_database_to_thousands():
             print(f"⚠️ Himalayas error: {e}")
             break
     
-    # PIPELINE 3: Jobicy
-    print("🌍 Fetching from Jobicy...")
-    for count in [50, 100]:
-        try:
-            jobicy_url = f"https://jobicy.com/api/v2/remote-jobs?count={count}"
-            res = requests.get(jobicy_url, headers=headers, timeout=15)
-            
-            if res.status_code == 200:
-                data = res.json()
-                jobs_list = data.get('jobs', [])
-                
-                for job in jobs_list:
-                    title = clean_text(job.get('jobTitle', ''))
-                    company = clean_text(job.get('companyName', ''))
-                    
-                    if not title or not company:
-                        continue
-                    
-                    key = f"{title.lower()}|{company.lower()}"
-                    if key not in existing_keys:
-                        description = job.get('jobDescription', '')
-                        salary = extract_salary(description) or '$40,000 - $80,000'
-                        
-                        new_job = JobListing.objects.create(
-                            title=title,
-                            company_name=company,
-                            location=clean_text(job.get('jobGeo', 'Worldwide')),
-                            description=description,
-                            apply_url=job.get('url', '#'),
-                            salary_range=salary
-                        )
-                        
-                        if enrich_job_with_sections(new_job):
-                            enriched_count += 1
-                        
-                        added_count += 1
-                        existing_keys.add(key)
-                        print(f"   ✅ Added: {title} at {company} | Salary: {salary}")
-                    else:
-                        skipped_count += 1
-        except Exception as e:
-            print(f"⚠️ Jobicy error: {e}")
-    
-    # PIPELINE 4: Remotive
-    print("🌍 Fetching from Remotive...")
-    try:
-        remotive_url = "https://remotive.com/api/remote-jobs"
-        res = requests.get(remotive_url, headers=headers, timeout=15)
-        
-        if res.status_code == 200:
-            data = res.json()
-            jobs_list = data.get('jobs', [])
-            
-            for job in jobs_list:
-                title = clean_text(job.get('title', ''))
-                company = clean_text(job.get('company_name', ''))
-                
-                if not title or not company:
-                    continue
-                
-                key = f"{title.lower()}|{company.lower()}"
-                if key not in existing_keys:
-                    description = job.get('description', '')
-                    salary = clean_text(job.get('salary', ''))
-                    
-                    if not salary:
-                        extracted = extract_salary(description)
-                        if extracted:
-                            salary = extracted
-                    
-                    new_job = JobListing.objects.create(
-                        title=title,
-                        company_name=company,
-                        location=clean_text(job.get('candidate_required_location', 'Worldwide')),
-                        description=description,
-                        apply_url=job.get('url', '#'),
-                        salary_range=salary or '$40,000 - $80,000'
-                    )
-                    
-                    if enrich_job_with_sections(new_job):
-                        enriched_count += 1
-                    
-                    added_count += 1
-                    existing_keys.add(key)
-                    print(f"   ✅ Added: {title} at {company} | Salary: {salary or 'Not specified'}")
-                else:
-                    skipped_count += 1
-    except Exception as e:
-        print(f"⚠️ Remotive error: {e}")
-    
     print(f"\n{'='*60}")
     print(f"📊 SCRAPER SUMMARY")
     print(f"{'='*60}")
     print(f"✅ New jobs added: {added_count}")
     print(f"⏭️  Skipped (duplicates): {skipped_count}")
+    print(f"🚫 Filtered (low quality/spam): {filtered_count}")
     print(f"📈 Total jobs in database: {JobListing.objects.count()}")
-    print(f"🔍 Jobs enriched with structured content: {enriched_count}")
+    print(f"🔍 Jobs enriched: {enriched_count}")
+    print(f"🏷️  Jobs categorized: {categorized_count}")
     print(f"{'='*60}")
     
-    return f"Added {added_count} new jobs | Total: {JobListing.objects.count()} | Enriched: {enriched_count}"
+    return f"Added {added_count} new jobs | Total: {JobListing.objects.count()} | Filtered: {filtered_count} | Categorized: {categorized_count}"
