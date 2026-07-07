@@ -4,33 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}GlobalGigs — High-Paying Remote Jobs & AI Gigs{% endblock %}</title>
-    
-    <!-- AADS Bot Crawler Verification Meta Tag -->
+    <meta name="description" content="Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Fresh global opportunities scraped and updated live every single day.">
+    <meta name="robots" content="index, follow">
     <meta name="aads-verification" content="2442514">
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="{% block description %}Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Updated daily with fresh global opportunities.{% endblock %}">
-    <meta name="keywords" content="remote jobs, AI gigs, work from home, freelance, global jobs, tech jobs">
-    
-    <!-- Open Graph / Social Media -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    <meta property="og:title" content="{% block og_title %}GlobalGigs — High-Paying Remote Jobs & AI Gigs{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Updated daily with fresh global opportunities.{% endblock %}">
-    <meta property="og:image" content="{% block og_image %}https://globalgigs-0096.onrender.com/static/og-image.png{% endblock %}">
-    <meta property="og:site_name" content="GlobalGigs">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}GlobalGigs — High-Paying Remote Jobs & AI Gigs{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Updated daily.{% endblock %}">
-    
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
 
-    <!-- Premium Navigation Header -->
     <header class="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <a href="/" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white">
@@ -38,56 +19,28 @@
             </a>
             <div class="flex items-center gap-4">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard:home' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">
-                        Dashboard
-                    </a>
-                    <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
-                        Post Job
-                    </a>
-                    <!-- ✅ Logout as a POST form -->
-                    <form method="post" action="{% url 'logout' %}" class="inline" style="display: inline;">
+                    <a href="{% url 'dashboard:home' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">Dashboard</a>
+                    <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">Post Job</a>
+                    <form method="post" action="{% url 'logout' %}" class="inline">
                         {% csrf_token %}
-                        <button type="submit" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition bg-transparent border-0 cursor-pointer">
-                            Logout
-                        </button>
+                        <button type="submit" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition bg-transparent border-0 cursor-pointer">Logout</button>
                     </form>
                 {% else %}
-                    <a href="{% url 'login' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">
-                        Login
-                    </a>
-                    <a href="{% url 'signup' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
-                        Sign Up
-                    </a>
+                    <a href="{% url 'login' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">Login</a>
+                    <a href="{% url 'signup' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">Sign Up</a>
                 {% endif %}
-                <span class="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-mono border border-zinc-700">
-                    v2026.Live
-                </span>
+                <span class="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-mono border border-zinc-700">v2026.Live</span>
             </div>
         </div>
     </header>
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="max-w-7xl mx-auto px-4 mt-4">
-            {% for message in messages %}
-                <div class="p-4 rounded-xl border {% if message.tags == 'success' %}bg-emerald-950/30 border-emerald-800 text-emerald-400{% elif message.tags == 'error' %}bg-red-950/30 border-red-800 text-red-400{% else %}bg-zinc-800/30 border-zinc-700 text-zinc-300{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
-    <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-8">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
     <footer class="border-t border-zinc-800 mt-20 py-8 bg-zinc-950/30">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-600 font-mono">
-            <div>
-                © 2026 GlobalGigs Inc. Automated Content Delivery System.
-            </div>
+            <div>© 2026 GlobalGigs Inc. Automated Content Delivery System.</div>
             <div class="flex gap-4">
                 <a href="/admin/" class="hover:text-zinc-400 transition">Console Access</a>
                 <span>•</span>
