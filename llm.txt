@@ -1,0 +1,134 @@
+# GLOBALGIGS - Job Board Platform
+
+## About This File
+This file helps AI assistants understand the GlobalGigs project context, architecture, and key decisions. It's designed for LLM context, not for debugging.
+
+## Project Overview
+GlobalGigs is a production-ready job board platform that aggregates remote job opportunities from multiple sources. It serves job seekers and employers with a modern, dark-themed interface.
+
+### Mission
+"Connecting talented professionals with global opportunities, eliminating barriers to remote work."
+
+## Quick Facts
+- **Live URL**: https://globalgigs-0096.onrender.com/
+- **Repository**: https://github.com/kellywafula980-afk/money_site
+- **Founder**: Kelly Simiyu (kellysimiyu122@gmail.com)
+- **Founded**: 2026
+- **Location**: Nairobi, Kenya
+
+## Core Values
+1. Transparency - Honest job listings with clear expectations
+2. Accessibility - No degrees required, skills matter most
+3. Innovation - Using AI to match talent with opportunities
+4. Global Community - Connecting professionals worldwide
+5. Quality - Curating only the best job opportunities
+
+## Key Features for Job Seekers
+- **Search & Filter**: Find jobs by keyword and category
+- **Apply Free**: On-site applications with resume upload
+- **No Degree Required**: Skills-based matching
+- **Global Opportunities**: Jobs from 50+ countries
+- **Free Access**: No paywalls for job seekers
+
+## Key Features for Employers
+- **Post Jobs**: Simple job posting with Paystack payment
+- **Dashboard**: Manage listings and applications
+- **Analytics**: Track views and applications
+- **Featured Listings**: Premium visibility options
+- **Quality Control**: Spam filtering and verification
+
+## Technical Architecture Summary
+- **Framework**: Django 6.0.5 (Python 3.12)
+- **Database**: PostgreSQL (production) / SQLite (development)
+- **Frontend**: Tailwind CSS + Alpine.js
+- **Hosting**: Render (free tier)
+- **Payments**: Paystack integration
+- **Scraping**: Multi-source aggregation with quality filtering
+
+## Data Flow
+1. Scraper collects jobs from RemoteOK and Himalayas
+2. Quality filter removes spam (100+ char minimum, keyword blocking)
+3. AI-powered categorization assigns one of 19 categories
+4. Jobs are stored with enriched structured data
+5. Users search, view, and apply
+6. Employers manage listings via dashboard
+
+## User Types
+1. **Job Seekers**: Browse, search, and apply for jobs
+2. **Employers**: Post jobs and manage applications
+3. **Admins**: Manage content and users
+
+## Competitive Advantage
+- **Quality Filtering**: Rejects spam and low-quality jobs
+- **No Degree Required**: Skills-first approach
+- **Free for Job Seekers**: No subscription fees
+- **Dark Theme**: Modern, eye-friendly design
+- **Quick Apply**: On-site applications without redirects
+- **Global Focus**: Jobs from multiple countries
+
+## SEO Strategy
+- Google Jobs JSON-LD structured data
+- Dynamic sitemap generation
+- robots.txt configuration
+- SEO-optimized meta tags
+- Rich snippets for job listings
+
+## Business Model
+- **Job Posting Fee**: 4,900 KES per listing (Paystack)
+- **Featured Listings**: Premium visibility
+- **Volume Discounts**: Available for bulk postings
+- **Free for Job Seekers**: Always free to apply
+
+## Traffic Strategy
+- Organic SEO (Google Jobs integration)
+- Social media presence (LinkedIn, Twitter)
+- Referral program (coming soon)
+- Content marketing (blog and resources)
+
+## Response Guidelines for AI Assistants
+When helping with this project:
+1. **Maintain dark theme**: All UI should use the established dark theme
+2. **Keep it simple**: Avoid corporate fluff, focus on what matters
+3. **Be job-focused**: Prioritize features that help job seekers and employers
+4. **No degrees required**: Emphasize skills-based hiring
+5. **Mobile-first**: Ensure all solutions work on mobile devices
+
+## Common Questions About This Project
+**Q: Why was this built?**
+A: To democratize access to high-paying remote jobs, removing degree requirements and corporate barriers.
+
+**Q: Who is this for?**
+A: Job seekers looking for remote work and employers wanting to reach global talent.
+
+**Q: Is it free for job seekers?**
+A: Yes, always free to browse and apply.
+
+**Q: How are jobs sourced?**
+A: Automated scraping from multiple job boards with quality filtering.
+
+**Q: Can I post a job?**
+A: Yes, employers can post jobs for a small fee.
+
+## Design Philosophy
+- **Dark, Premium Feel**: Black background with emerald accents
+- **Clean and Minimal**: No clutter, focus on jobs
+- **Mobile First**: Responsive across all devices
+- **Fast Loading**: Optimized for performance
+- **Accessible**: Easy to use for all skill levels
+
+## Quick Reference for Developers
+- **Project Structure**: Standard Django with apps
+- **Main App**: `jobs/` - Core job board functionality
+- **Dashboard App**: `dashboard/` - Employer management
+- **Templates**: `/templates/` and app-specific templates
+- **Static Files**: Collected via WhiteNoise
+- **Media**: User-uploaded resumes stored in `/media/`
+
+## Contact
+For questions or partnerships:
+- **Email**: kellysimiyu122@gmail.com
+- **Location**: Nairobi, Kenya
+
+---
+This file is for AI assistant context. For technical documentation, see the code comments and README.
+Last updated: July 2026
