@@ -8,9 +8,14 @@
         <h1 class="text-3xl font-black text-white tracking-tight">My Jobs</h1>
         <p class="text-zinc-400 mt-1">Manage your job listings</p>
     </div>
-    <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
-        Post New Job
-    </a>
+    <div class="flex gap-3">
+        <a href="/" class="text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <span>←</span> Back to Home
+        </a>
+        <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">
+            Post New Job
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->
