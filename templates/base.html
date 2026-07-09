@@ -3,21 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}GlobalGigs — High-Paying Remote Jobs & AI Gigs{% endblock %}</title>
-    <meta name="description" content="Find high-paying remote jobs and AI gigs. No degrees, no corporate fluff. Fresh global opportunities scraped and updated live every single day.">
+    
+    <!-- ============================================================
+         TITLE & DESCRIPTION (HIGH-INTENT KEYWORDS)
+    ============================================================ -->
+    <title>{% block title %}Remote Jobs, AI Gigs & Freelance Opportunities - GlobalGigs{% endblock %}</title>
+    <meta name="description" content="{% block description %}Find 1,000+ remote jobs, AI gigs, and freelance opportunities. Work from home in tech, marketing, design, finance, healthcare & more. Updated daily. Apply free to global roles.{% endblock %}">
+    <meta name="keywords" content="remote jobs, AI jobs, freelance jobs, work from home, tech jobs, developer jobs, digital marketing jobs, design jobs, finance jobs, healthcare jobs, Kenya jobs, global jobs, career, employment, online jobs">
     <meta name="robots" content="index, follow">
+    <meta name="author" content="GlobalGigs">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="1 day">
+
+    <!-- ============================================================
+         SEO / VERIFICATION TAGS
+    ============================================================ -->
+    <meta name="google-site-verification" content="your-verification-code-here">
     <meta name="aads-verification" content="2442514">
+
+    <!-- ============================================================
+         CANONICAL
+    ============================================================ -->
+    <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}">
+
+    <!-- ============================================================
+         OPEN GRAPH (Facebook, LinkedIn)
+    ============================================================ -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="{% block og_title %}Remote Jobs, AI Gigs & Freelance Opportunities - GlobalGigs{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Find 1,000+ remote jobs, AI gigs, and freelance opportunities. Work from home in tech, marketing, design, finance & more. Updated daily.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://globalgigs-0096.onrender.com/static/og-image.png{% endblock %}">
+    <meta property="og:site_name" content="GlobalGigs">
+    <meta property="og:locale" content="en_US">
+
+    <!-- ============================================================
+         TWITTER CARDS
+    ============================================================ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}Remote Jobs, AI Gigs & Freelance Opportunities - GlobalGigs{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Find 1,000+ remote jobs, AI gigs, and freelance opportunities. Work from home in tech, marketing, design, finance & more. Apply free.{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://globalgigs-0096.onrender.com/static/og-image.png{% endblock %}">
+    <meta name="twitter:site" content="@globalgigs">
+    <meta name="twitter:creator" content="@globalgigs">
+
+    <!-- ============================================================
+         THEME COLOR
+    ============================================================ -->
+    <meta name="theme-color" content="#10b981">
+
+    <!-- ============================================================
+         STYLES
+    ============================================================ -->
     <script src="https://cdn.tailwindcss.com"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
 
+    <!-- ============================================================
+         HEADER
+    ============================================================ -->
     <header class="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white">
+            <a href="{% url 'jobs:home' %}" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white">
                 <span class="text-emerald-500">GLOBAL</span><span class="text-emerald-400">GIGS</span>
             </a>
             <div class="flex items-center gap-4">
+                <a href="{% url 'jobs:company_list' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition hidden sm:inline-block">Companies</a>
+                <a href="{% url 'jobs:category_list' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition hidden sm:inline-block">Categories</a>
+                
                 {% if user.is_authenticated %}
                     <a href="{% url 'dashboard:home' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">Dashboard</a>
                     <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">Post Job</a>
@@ -34,14 +88,24 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
+    <!-- ============================================================
+         MAIN CONTENT
+    ============================================================ -->
+    <main>
         {% block content %}{% endblock %}
     </main>
 
+    <!-- ============================================================
+         FOOTER
+    ============================================================ -->
     <footer class="border-t border-zinc-800 mt-20 py-8 bg-zinc-950/30">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-600 font-mono">
             <div>© 2026 GlobalGigs Inc. Automated Content Delivery System.</div>
             <div class="flex gap-4">
+                <a href="{% url 'jobs:company_list' %}" class="hover:text-zinc-400 transition">Companies</a>
+                <span>•</span>
+                <a href="{% url 'jobs:category_list' %}" class="hover:text-zinc-400 transition">Categories</a>
+                <span>•</span>
                 <a href="/admin/" class="hover:text-zinc-400 transition">Console Access</a>
                 <span>•</span>
                 <span class="text-zinc-500">Tracking Active: kellywafula_gigs</span>
@@ -49,7 +113,6 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,202 +1,91 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ✅ Primary Meta Tags -->
-    <title>GlobalGigs: 500+ Remote Jobs Added Daily – Apply Free</title>
-    <meta name="description" content="Find 500+ fresh remote jobs daily. No degrees required. Apply free to high-paying AI, tech, and data roles. Start your dream career today.">
-    <meta name="keywords" content="remote jobs, AI jobs, work from home, freelance jobs, global jobs, tech jobs, data entry, developer jobs, Nairobi jobs, Kenya jobs, remote work, online jobs, career, employment">
-    <meta name="robots" content="index, follow">
-    <meta name="author" content="GlobalGigs">
-    <meta name="language" content="English">
-    <meta name="revisit-after" content="1 day">
-    
-    <!-- ✅ Open Graph / Social Media (Facebook, LinkedIn) -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://globalgigs-0096.onrender.com/">
-    <meta property="og:title" content="GlobalGigs: 500+ Remote Jobs Added Daily – Apply Free">
-    <meta property="og:description" content="Find 500+ fresh remote jobs daily. No degrees required. Apply free to high-paying AI, tech, and data roles.">
-    <meta property="og:image" content="https://globalgigs-0096.onrender.com/static/og-image.png">
-    <meta property="og:site_name" content="GlobalGigs">
-    <meta property="og:locale" content="en_US">
-    
-    <!-- ✅ Twitter Card Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="GlobalGigs: 500+ Remote Jobs Added Daily – Apply Free">
-    <meta name="twitter:description" content="Find 500+ fresh remote jobs daily. No degrees required. Apply free to high-paying AI, tech, and data roles.">
-    <meta name="twitter:image" content="https://globalgigs-0096.onrender.com/static/og-image.png">
-    <meta name="twitter:site" content="@globalgigs">
-    <meta name="twitter:creator" content="@globalgigs">
-    
-    <!-- ✅ Google Trends / Search Console -->
-    <meta name="google-site-verification" content="your-verification-code-here">
-    
-    <!-- ✅ Additional SEO -->
-    <link rel="canonical" href="https://globalgigs-0096.onrender.com/">
-    <meta name="theme-color" content="#10b981">
-    
-    <!-- AADS Bot Crawler Verification -->
-    <meta name="aads-verification" content="2442514">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-black text-zinc-100 min-h-screen font-sans antialiased">
+{% extends "base.html" %}
 
-    <header class="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2 font-black text-2xl tracking-tighter text-white">
-                <span class="text-emerald-500">GLOBAL</span><span class="text-emerald-400">GIGS</span>
-            </a>
-            <div class="flex items-center gap-4">
-                {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard:home' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">Dashboard</a>
-                    <a href="{% url 'dashboard:post_job' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">Post Job</a>
-                    <form method="post" action="{% url 'logout' %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition bg-transparent border-0 cursor-pointer">Logout</button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'login' %}" class="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg transition">Login</a>
-                    <a href="{% url 'signup' %}" class="text-sm bg-emerald-500 hover:bg-emerald-600 text-black px-4 py-2 rounded-lg font-bold transition shadow-lg shadow-emerald-500/20">Sign Up</a>
-                {% endif %}
-                <span class="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-mono border border-zinc-700">v2026.Live</span>
-            </div>
-        </div>
-    </header>
+{% block title %}
+    {% if search_query %}
+        {{ search_query }} Jobs - Remote Work - GlobalGigs
+    {% elif category_name %}
+        {{ category_name }} Jobs - Remote Work - GlobalGigs
+    {% else %}
+        Remote Jobs, AI Gigs & Freelance Opportunities - GlobalGigs
+    {% endif %}
+{% endblock %}
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
-        <!-- Hero Section -->
-        <div class="text-center mb-12">
-            <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">
-                Find Your Dream Job <span class="text-emerald-400">🚀</span>
-            </h1>
-            <p class="text-xl font-bold text-zinc-400 mt-3">500+ Remote Jobs & AI Gigs Added Daily</p>
-            <p class="text-zinc-500 mt-2 text-sm max-w-2xl mx-auto">
-                No degree? No problem. Fresh global opportunities scraped and updated live every single day. Apply for free.
-            </p>
-            <div class="mt-4 flex flex-wrap justify-center gap-3">
-                <span class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">🔥 500+ New Jobs</span>
-                <span class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">🌍 50+ Countries</span>
-                <span class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">💼 Free to Apply</span>
-                <span class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">📅 Updated Daily</span>
-            </div>
-        </div>
+{% block description %}
+    {% if search_query %}
+        Find {{ search_query }} remote jobs. Work from home in tech, marketing, design, finance & more. Apply free to 1,000+ global roles.
+    {% elif category_name %}
+        Find {{ category_name }} remote jobs. Work from home in tech, marketing, design, finance & more. Apply free to 1,000+ global roles.
+    {% else %}
+        Find 1,000+ remote jobs, AI gigs, and freelance opportunities. Work from home in tech, marketing, design, finance, healthcare & more. Updated daily. Apply free.
+    {% endif %}
+{% endblock %}
 
-        <!-- Search Form -->
-        <form method="GET" action="" class="flex flex-col sm:flex-row gap-3 w-full max-w-4xl mx-auto mb-8">
-            <div class="relative flex-1">
-                <input type="text" name="search" value="{{ search_query }}" placeholder="Search jobs (e.g., Data, AI, Assistant)..." class="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-xl placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition">
-                <span class="absolute left-3.5 top-3.5 text-zinc-600 font-bold">🔍</span>
-            </div>
-            <div class="relative">
-                <select name="category" onchange="this.form.submit()" class="w-full sm:w-48 px-4 py-3 bg-zinc-800 border border-zinc-700 text-white rounded-xl focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-10">
-                    <option value="">📌 All Jobs</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat.slug }}" {% if current_category == cat.slug %}selected{% endif %}>
-                            {{ cat.icon }} {{ cat.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <span class="absolute right-3 top-3.5 text-zinc-500 pointer-events-none">▼</span>
-            </div>
-            <button type="submit" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold rounded-xl transition shadow-lg shadow-emerald-500/20 whitespace-nowrap">Search</button>
-        </form>
-
-        <!-- Filter Banners -->
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-white mb-2">
         {% if search_query %}
-            <div class="text-center mb-4 text-sm text-zinc-400">
-                Showing results for: <span class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900 px-2 py-0.5 rounded">"{{ search_query }}"</span>
-            </div>
+            {{ search_query }} Jobs
+        {% elif category_name %}
+            {{ category_name }} Jobs
+        {% else %}
+            Find Your Dream Job 🚀
         {% endif %}
-        {% if category_name %}
-            <div class="text-center mb-4 text-sm text-zinc-400">
-                Filtering by: <span class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900 px-2 py-0.5 rounded">{{ category_name }}</span>
-                <a href="/" class="ml-2 text-zinc-500 hover:text-zinc-300 transition underline underline-offset-2">(Clear)</a>
-            </div>
-        {% endif %}
+    </h1>
+    <p class="text-zinc-400 mb-6">{{ jobs.count }} live remote jobs available</p>
 
-        <!-- Job Count -->
-        <div class="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3">
-            <div class="flex items-center gap-2">
-                <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                <h2 class="text-xs uppercase tracking-widest font-black text-zinc-400">Latest Active Postings</h2>
-            </div>
-            <span class="text-xs text-zinc-500">{{ jobs|length }} jobs found</span>
-        </div>
+    <!-- Search & Filter -->
+    <div class="mb-6 flex flex-wrap gap-2">
+        <form method="GET" class="flex flex-wrap gap-2 w-full">
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Search jobs (e.g., Python, Marketing, Remote)..." class="flex-1 min-w-[200px] px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
+            <select name="category" class="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.slug }}" {% if cat.slug == current_category %}selected{% endif %}>{{ cat.icon }} {{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-lg transition">Search</button>
+            {% if search_query or current_category %}
+                <a href="{% url 'jobs:home' %}" class="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition">Clear</a>
+            {% endif %}
+        </form>
+    </div>
 
-        <!-- ✅ GRID LAYOUT - Cards in a grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for job in jobs %}
-                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 hover:border-zinc-700 hover:bg-zinc-900 transition duration-200 flex flex-col">
-                    <!-- Job Title -->
-                    <a href="/jobs/{{ job.id }}/" class="block flex-1">
-                        <h3 class="text-base font-bold text-white tracking-tight leading-snug hover:text-emerald-400 transition line-clamp-2">
-                            {{ job.title }}
-                        </h3>
-                    </a>
-                    
-                    <!-- Company & Location -->
+    <!-- Job Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for job in jobs %}
+            <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition flex flex-col">
+                <a href="{% url 'jobs:detail' slug=job.slug %}" class="block flex-1">
+                    <h3 class="text-lg font-semibold text-white hover:text-emerald-400 transition line-clamp-2">
+                        {{ job.title }}
+                    </h3>
+                </a>
+                
+                <div class="mt-2 text-sm text-zinc-400">
+                    <p class="truncate">🏢 {{ job.company_name }}</p>
+                    <p class="truncate">📍 {{ job.location|default:"Remote" }}</p>
+                </div>
+
+                {% if job.category %}
                     <div class="mt-2">
-                        <p class="text-zinc-400 font-medium text-sm truncate">
-                            🏢 {{ job.company_name }}
-                        </p>
-                        <p class="text-zinc-500 text-sm truncate">
-                            📍 {{ job.location }}
-                        </p>
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">{{ job.category.icon }} {{ job.category.name }}</span>
                     </div>
-                    
-                    <!-- Tags -->
-                    <div class="flex flex-wrap gap-1.5 mt-3">
-                        {% if job.category %}
-                            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                                {{ job.category.icon }} {{ job.category.name }}
-                            </span>
-                        {% endif %}
-                        {% if job.is_featured %}
-                            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">⭐ Featured</span>
-                        {% endif %}
-                        {% if job.is_premium %}
-                            <span class="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">💎 Premium</span>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Salary -->
-                    {% if job.salary_range %}
-                        <p class="text-sm text-zinc-500 mt-2">💰 {{ job.salary_range }}</p>
-                    {% endif %}
-                    
-                    <!-- Actions -->
-                    <div class="flex gap-2 mt-4 pt-3 border-t border-zinc-800/60">
-                        <a href="/jobs/{{ job.id }}/" class="flex-1 text-center text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition">
-                            View
-                        </a>
-                        <a href="/jobs/{{ job.id }}/#apply" class="flex-1 text-center text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-3 py-1.5 rounded-lg transition shadow-lg shadow-emerald-500/20">
-                            Apply →
-                        </a>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="col-span-full p-16 text-center border-2 border-dashed border-zinc-800 rounded-2xl bg-zinc-950/60">
-                    <p class="text-zinc-500 font-medium text-lg">No active positions found</p>
-                    <p class="text-zinc-600 text-sm mt-1">Try refining your search or checking back later.</p>
-                    <a href="/" class="mt-5 inline-block text-sm font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-4">Clear filters</a>
-                </div>
-            {% endfor %}
-        </div>
-    </main>
+                {% endif %}
 
-    <footer class="border-t border-zinc-800 mt-20 py-8 bg-zinc-950/30">
-        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-600 font-mono">
-            <div>© 2026 GlobalGigs Inc. Automated Content Delivery System.</div>
-            <div class="flex gap-4">
-                <a href="/admin/" class="hover:text-zinc-400 transition">Console Access</a>
-                <span>•</span>
-                <span class="text-zinc-500">Tracking Active: kellywafula_gigs</span>
+                {% if job.salary_range and job.salary_range != "$40,000 - $80,000" %}
+                    <p class="text-sm text-emerald-400 font-medium mt-2">💰 {{ job.salary_range }}</p>
+                {% endif %}
+
+                <div class="flex gap-2 mt-4 pt-3 border-t border-zinc-800">
+                    <a href="{% url 'jobs:detail' slug=job.slug %}" class="flex-1 text-center text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition">View</a>
+                    <a href="{% url 'jobs:detail' slug=job.slug %}#apply" class="flex-1 text-center text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-3 py-1.5 rounded-lg transition shadow-lg shadow-emerald-500/20">Apply →</a>
+                </div>
             </div>
-        </div>
-    </footer>
-
-</body>
-</html>
+        {% empty %}
+            <div class="col-span-full text-center py-12 text-zinc-500">
+                <p class="text-lg">No jobs found</p>
+                <p class="text-sm">Try adjusting your search or filters.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

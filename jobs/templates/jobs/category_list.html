@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Job Categories - GlobalGigs{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-white mb-2">Job Categories</h1>
+    <p class="text-zinc-400 mb-6">{{ categories|length }} categories with open positions</p>
+
+    <!-- ✅ Grid Layout for Categories -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {% for category, count in categories %}
+            <a href="{% url 'jobs:category_detail' category_name=category.name %}" 
+               class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 hover:border-emerald-500 transition flex flex-col items-center text-center group">
+                <div class="text-4xl mb-3">{{ category.icon }}</div>
+                <h3 class="text-lg font-semibold text-white group-hover:text-emerald-400 transition">{{ category.name }}</h3>
+                <p class="text-sm text-zinc-400">{{ count }} job{{ count|pluralize }}</p>
+                <span class="mt-3 text-xs bg-zinc-800 group-hover:bg-emerald-500/20 text-zinc-400 group-hover:text-emerald-400 px-3 py-1 rounded-full transition">
+                    Browse →
+                </span>
+            </a>
+        {% empty %}
+            <div class="col-span-full text-center py-12 text-zinc-500">
+                <p class="text-lg">No categories found</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Companies Hiring Now - GlobalGigs{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-white mb-2">Companies Hiring Now</h1>
+    <p class="text-zinc-400 mb-6">{{ companies|length }} companies with open positions</p>
+
+    <!-- ✅ Grid Layout for Companies -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {% for company in companies %}
+            <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition flex flex-col items-center text-center">
+                <div class="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center text-2xl font-bold text-emerald-400 mb-3">
+                    {{ company.company_name|slice:":1"|upper }}
+                </div>
+                <h3 class="text-lg font-semibold text-white truncate w-full">{{ company.company_name }}</h3>
+                <p class="text-sm text-zinc-400">{{ company.total }} job{{ company.total|pluralize }}</p>
+                <a href="{% url 'jobs:company_detail' company_name=company.company_name %}" 
+                   class="mt-3 text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-4 py-1.5 rounded-lg transition shadow-lg shadow-emerald-500/20">
+                    View Jobs
+                </a>
+            </div>
+        {% empty %}
+            <div class="col-span-full text-center py-12 text-zinc-500">
+                <p class="text-lg">No companies found</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

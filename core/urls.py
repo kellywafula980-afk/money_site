@@ -13,7 +13,11 @@ urlpatterns = [
     # ============================================================
     path('robots.txt', jobs_views.robots_txt, name='robots'),
     path('admin/', admin.site.urls),
-    path('', include('jobs.urls')),
+    
+    # ============================================================
+    # JOB ROUTES (includes new slug-based URLs)
+    # ============================================================
+    path('', include('jobs.urls')),  # All job routes are now in jobs/urls.py
     
     # ============================================================
     # 🔐 AUTHENTICATION

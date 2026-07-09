@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category.name }} Jobs - GlobalGigs{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-2">
+        <span class="text-4xl">{{ category.icon }}</span>
+        <h1 class="text-3xl font-bold text-white">{{ category.name }} Jobs</h1>
+    </div>
+    <p class="text-zinc-400 mb-6">{{ total }} live {{ category.name|lower }} jobs available</p>
+
+    <!-- ✅ Grid of Job Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for job in jobs %}
+            <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition flex flex-col">
+                <!-- Job Title -->
+                <a href="{% url 'jobs:detail' slug=job.slug %}" class="block flex-1">
+                    <h3 class="text-lg font-semibold text-white hover:text-emerald-400 transition line-clamp-2">
+                        {{ job.title }}
+                    </h3>
+                </a>
+                
+                <!-- Company & Location -->
+                <div class="mt-2 text-sm text-zinc-400">
+                    <p class="truncate">🏢 {{ job.company_name }}</p>
+                    <p class="truncate">📍 {{ job.location|default:"Remote" }}</p>
+                </div>
+
+                <!-- Category Tag -->
+                {% if job.category %}
+                    <div class="mt-2">
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                            {{ job.category.icon }} {{ job.category.name }}
+                        </span>
+                    </div>
+                {% endif %}
+
+                <!-- Salary (only if not placeholder) -->
+                {% if job.salary_range and job.salary_range != "$40,000 - $80,000" %}
+                    <p class="text-sm text-emerald-400 font-medium mt-2">💰 {{ job.salary_range }}</p>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 mt-4 pt-3 border-t border-zinc-800">
+                    <a href="{% url 'jobs:detail' slug=job.slug %}" 
+                       class="flex-1 text-center text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition">
+                        View Details
+                    </a>
+                    <a href="{% url 'jobs:detail' slug=job.slug %}#apply" 
+                       class="flex-1 text-center text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-3 py-1.5 rounded-lg transition shadow-lg shadow-emerald-500/20">
+                        Apply →
+                    </a>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-span-full text-center py-12 text-zinc-500">
+                <p class="text-lg">No jobs found in this category</p>
+                <p class="text-sm">Check back later for new opportunities.</p>
+                <a href="{% url 'jobs:home' %}" class="mt-4 inline-block text-sm text-emerald-400 hover:text-emerald-300 transition">
+                    ← Browse all jobs
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Back Link -->
+    <div class="mt-8">
+        <a href="{% url 'jobs:category_list' %}" class="text-sm text-zinc-400 hover:text-white transition inline-flex items-center gap-2">
+            <span>←</span> Back to all categories
+        </a>
+    </div>
+</div>
+{% endblock %}

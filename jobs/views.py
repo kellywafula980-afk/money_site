@@ -1,17 +1,31 @@
+import json
+import os
+from urllib.parse import unquote
+
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
-from django.http import HttpResponse
+from django.db.models import Q, Count
+from django.http import HttpResponse, Http404, FileResponse
 from django.contrib import messages
 from django.urls import reverse
 from django.conf import settings
 from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+
 from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
-from .scraper import scale_database_to_thousands, parse_job_sections
-import requests
-import json
+
+
+# ============================================================
+# ROBOTS.TXT (MUST BE DEFINED FIRST)
+# ============================================================
+
+def robots_txt(request):
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
+    return HttpResponse(content, content_type='text/plain')
 
 
 # ============================================================
@@ -22,37 +36,38 @@ def job_list_view(request):
     """Renders the live job stream with search and category filters"""
     query = request.GET.get('search', '').strip()
     category_slug = request.GET.get('category', '')
-    
-    # Start with all jobs
+
     jobs = JobListing.objects.filter(is_active=True).order_by('-id')
-    
-    # 🏷️ FILTER BY CATEGORY
+
     if category_slug:
         try:
             category = JobCategory.objects.get(slug=category_slug)
             jobs = jobs.filter(category=category)
         except JobCategory.DoesNotExist:
             jobs = JobListing.objects.none()
-    
-    # 🔍 FILTER BY SEARCH QUERY
+
     if query:
         jobs = jobs.filter(
-            Q(title__icontains=query) | 
+            Q(title__icontains=query) |
             Q(company_name__icontains=query) |
             Q(location__icontains=query)
         )
-    
-    # Get all categories for the dropdown
+
     categories = JobCategory.objects.all()
-    
+
+    category_name = None
+    if category_slug and JobCategory.objects.filter(slug=category_slug).exists():
+        category_name = JobCategory.objects.get(slug=category_slug).name
+
     context = {
         'jobs': jobs,
         'search_query': query,
         'categories': categories,
         'current_category': category_slug,
-        'category_name': JobCategory.objects.get(slug=category_slug).name if category_slug and JobCategory.objects.filter(slug=category_slug).exists() else None,
+        'category_name': category_name,
     }
-    
+
+    # Make sure you have templates/jobs/home.html
     return render(request, 'jobs/home.html', context)
 
 
@@ -61,16 +76,16 @@ content_batcher_dashboard = job_list_view
 
 
 # ============================================================
-# JOB DETAIL & APPLICATIONS
+# JOB DETAIL (SLUG VERSION)
 # ============================================================
 
-def job_detail_view(request, job_id):
-    """Display a single job listing with application form and structured content"""
-    job = get_object_or_404(JobListing, id=job_id, is_active=True)
-    
-    # Parse structured sections from description
+def job_detail_view(request, slug):
+    job = get_object_or_404(JobListing, slug=slug, is_active=True)
+    job.increment_views()
+
     if not job.responsibilities and job.description:
         try:
+            from .scraper import parse_job_sections
             parsed, clean_desc = parse_job_sections(job.description)
             if parsed:
                 job.responsibilities = parsed.get('responsibilities', '')
@@ -80,12 +95,11 @@ def job_detail_view(request, job_id):
                 job.save()
         except Exception as e:
             print(f"⚠️ Error parsing job {job.id}: {e}")
-    
-    # Related jobs
+
     related_jobs = JobListing.objects.filter(
         category=job.category
     ).exclude(id=job.id)[:6] if job.category else []
-    
+
     if not related_jobs and job.title:
         title_words = job.title.split()[:3]
         if title_words:
@@ -93,8 +107,7 @@ def job_detail_view(request, job_id):
                 Q(title__icontains=title_words[0]) |
                 Q(company_name__icontains=job.company_name[:20])
             ).exclude(id=job.id)[:6]
-    
-    # Handle application submission
+
     if request.method == 'POST':
         if 'full_name' in request.POST and 'email' in request.POST:
             try:
@@ -109,33 +122,72 @@ def job_detail_view(request, job_id):
                 if request.FILES.get('resume'):
                     application.resume = request.FILES['resume']
                 application.save()
-                
                 messages.success(request, f'✅ Your application for {job.title} has been submitted successfully!')
-                return redirect('job_detail', job_id=job.id)
-                
+                return redirect('jobs:detail', slug=job.slug)
             except Exception as e:
                 messages.error(request, f'❌ Error submitting application: {str(e)}')
-                return redirect('job_detail', job_id=job.id)
-    
+                return redirect('jobs:detail', slug=job.slug)
+
+    schema_json = json.dumps(job.get_structured_data())
+
     context = {
         'job': job,
         'related_jobs': related_jobs,
+        'schema_json': schema_json,
     }
-    
     return render(request, 'jobs/job_detail.html', context)
 
 
+def legacy_job_detail(request, job_id):
+    job = get_object_or_404(JobListing, id=job_id, is_active=True)
+    return redirect('jobs:detail', slug=job.slug, permanent=True)
+
+
 # ============================================================
-# ROBOTS.TXT
+# COMPANY LANDING PAGES
 # ============================================================
 
-def robots_txt(request):
-    """Robots.txt file for search engines"""
-    content = """User-agent: *
-Allow: /
+def company_list(request):
+    companies = JobListing.objects.filter(is_active=True).values('company_name').annotate(
+        total=Count('id')
+    ).order_by('-total')
+    return render(request, 'jobs/company_list.html', {'companies': companies})
 
-Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
-    return HttpResponse(content, content_type='text/plain')
+
+def company_detail(request, company_name):
+    jobs = JobListing.objects.filter(
+        company_name__iexact=company_name,
+        is_active=True
+    ).order_by('-created_at')
+    return render(request, 'jobs/company_detail.html', {
+        'jobs': jobs,
+        'company': company_name,
+        'total': jobs.count()
+    })
+
+
+# ============================================================
+# CATEGORY LANDING PAGES
+# ============================================================
+
+def category_list(request):
+    category_list = []
+    for cat in JobCategory.objects.all():
+        count = cat.jobs.filter(is_active=True).count()
+        if count > 0:
+            category_list.append((cat, count))
+    category_list.sort(key=lambda x: x[1], reverse=True)
+    return render(request, 'jobs/category_list.html', {'categories': category_list})
+
+
+def category_detail(request, category_name):
+    category = get_object_or_404(JobCategory, name__iexact=category_name)
+    jobs = category.jobs.filter(is_active=True).order_by('-created_at')
+    return render(request, 'jobs/category_detail.html', {
+        'jobs': jobs,
+        'category': category,
+        'total': jobs.count()
+    })
 
 
 # ============================================================
@@ -143,12 +195,11 @@ Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
 # ============================================================
 
 def generate_sitemap(request):
-    """Dynamic sitemap with all job URLs for Google SEO"""
     jobs = JobListing.objects.filter(is_active=True).order_by('-created_at')
-    
+
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    
+
     # Homepage
     xml += f'''<url>
     <loc>https://globalgigs-0096.onrender.com/</loc>
@@ -156,101 +207,65 @@ def generate_sitemap(request):
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
 </url>\n'''
-    
+
     # Job pages
     for job in jobs:
         xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/jobs/{job.id}/</loc>
+    <loc>https://globalgigs-0096.onrender.com/jobs/{job.slug}/</loc>
     <lastmod>{job.created_at.strftime("%Y-%m-%d")}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
 </url>\n'''
-    
+
+    # Company pages
+    companies = JobListing.objects.filter(is_active=True).values('company_name').distinct()
+    for company in companies:
+        xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/companies/{company['company_name']}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+</url>\n'''
+
+    # Category pages
+    categories = JobCategory.objects.filter(jobs__is_active=True).distinct()
+    for cat in categories:
+        xml += f'''<url>
+    <loc>https://globalgigs-0096.onrender.com/categories/{cat.name}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+</url>\n'''
+
     xml += '</urlset>'
     return HttpResponse(xml, content_type='application/xml')
 
 
 # ============================================================
-# SCRAPER & DEBUG
+# SCRAPER & ENRICHMENT
 # ============================================================
 
 def secret_trigger_scraper(request):
-    """Secure endpoint to populate the live production database"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized access.", status=403)
-        
+
     try:
+        from .scraper import scale_database_to_thousands
         result = scale_database_to_thousands()
         return HttpResponse(f"🚀 {result}", status=200)
     except Exception as e:
         return HttpResponse(f"⚠️ Error running scraper: {str(e)}", status=500)
 
 
-def debug_jobs(request):
-    """Shows how many jobs are in the database"""
-    count = JobListing.objects.count()
-    first_job = JobListing.objects.first()
-    
-    output = f"""
-    <h1>Database Debug</h1>
-    <p>Total JobListing objects: <strong>{count}</strong></p>
-    """
-    
-    if first_job:
-        output += f"""
-        <h2>First Job:</h2>
-        <ul>
-            <li>ID: {first_job.id}</li>
-            <li>Title: {first_job.title}</li>
-            <li>Company: {first_job.company_name}</li>
-            <li>Created: {first_job.created_at}</li>
-            <li>Has Responsibilities: {bool(first_job.responsibilities)}</li>
-            <li>Has Requirements: {bool(first_job.requirements)}</li>
-        </ul>
-        """
-    else:
-        output += "<p>⚠️ No jobs found in JobListing table!</p>"
-    
-    return HttpResponse(output)
-
-
-def category_debug(request):
-    """Debug view to check categories and jobs"""
-    output = "<h1>Category Debug</h1>"
-    
-    categories = JobCategory.objects.all()
-    output += f"<p>Total categories: {categories.count()}</p>"
-    
-    for cat in categories:
-        job_count = cat.jobs.count()
-        output += f"<p><strong>{cat.icon} {cat.name}</strong>: {job_count} jobs</p>"
-        if job_count > 0:
-            output += "<ul>"
-            for job in cat.jobs.all()[:5]:
-                output += f"<li>{job.title}</li>"
-            if job_count > 5:
-                output += f"<li>... and {job_count - 5} more</li>"
-            output += "</ul>"
-    
-    return HttpResponse(output)
-
-
-# ============================================================
-# ENRICH EXISTING JOBS
-# ============================================================
-
 def enrich_jobs_endpoint(request):
-    """Endpoint to enrich all jobs with structured content"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
+
     from .scraper import parse_job_sections
     jobs = JobListing.objects.all()
     count = 0
     errors = 0
-    
+
     for job in jobs:
         if job.description:
             try:
@@ -264,22 +279,72 @@ def enrich_jobs_endpoint(request):
                     count += 1
             except Exception as e:
                 errors += 1
-    
+
     return HttpResponse(f"✅ Enriched {count} jobs. Errors: {errors}")
 
 
 # ============================================================
-# PAYMENT & JOB POSTING (PAYSTACK)
+# DEBUG VIEWS
+# ============================================================
+
+def debug_jobs(request):
+    count = JobListing.objects.count()
+    first_job = JobListing.objects.first()
+
+    output = f"""
+    <h1>Database Debug</h1>
+    <p>Total JobListing objects: <strong>{count}</strong></p>
+    """
+
+    if first_job:
+        output += f"""
+        <h2>First Job:</h2>
+        <ul>
+            <li>ID: {first_job.id}</li>
+            <li>Title: {first_job.title}</li>
+            <li>Company: {first_job.company_name}</li>
+            <li>Slug: {first_job.slug}</li>
+            <li>Created: {first_job.created_at}</li>
+            <li>Has Responsibilities: {bool(first_job.responsibilities)}</li>
+            <li>Has Requirements: {bool(first_job.requirements)}</li>
+        </ul>
+        """
+    else:
+        output += "<p>⚠️ No jobs found in JobListing table!</p>"
+
+    return HttpResponse(output)
+
+
+def category_debug(request):
+    output = "<h1>Category Debug</h1>"
+
+    categories = JobCategory.objects.all()
+    output += f"<p>Total categories: {categories.count()}</p>"
+
+    for cat in categories:
+        job_count = cat.jobs.filter(is_active=True).count()
+        output += f"<p><strong>{cat.icon} {cat.name}</strong>: {job_count} jobs</p>"
+        if job_count > 0:
+            output += "<ul>"
+            for job in cat.jobs.filter(is_active=True)[:5]:
+                output += f"<li>{job.title}</li>"
+            if job_count > 5:
+                output += f"<li>... and {job_count - 5} more</li>"
+            output += "</ul>"
+
+    return HttpResponse(output)
+
+
+# ============================================================
+# JOB POSTING & PAYMENT (PAYSTACK)
 # ============================================================
 
 def post_job_page(request):
-    """Page where employers can post a job"""
     form = JobPostForm()
     return render(request, 'jobs/post_job.html', {'form': form})
 
 
 def initiate_payment(request):
-    """Initialize Paystack payment for job posting"""
     if request.method == 'POST':
         form = JobPostForm(request.POST)
         if form.is_valid():
@@ -290,12 +355,12 @@ def initiate_payment(request):
                 'location': form.cleaned_data['location'],
                 'salary_range': form.cleaned_data['salary_range'],
             }
-            
+
             headers = {
                 'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
                 'Content-Type': 'application/json',
             }
-            
+
             data = {
                 'email': request.POST.get('email'),
                 'amount': 4900 * 100,
@@ -306,44 +371,45 @@ def initiate_payment(request):
                     'company': form.cleaned_data['company_name'],
                 }
             }
-            
+
             try:
-                response = requests.post(
+                import requests as req
+                response = req.post(
                     'https://api.paystack.co/transaction/initialize',
                     headers=headers,
                     json=data,
                     timeout=30
                 )
                 response_data = response.json()
-                
+
                 if response_data.get('status'):
                     return redirect(response_data['data']['authorization_url'])
                 else:
                     messages.error(request, f"Payment initialization failed: {response_data.get('message')}")
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
-    
+
     return redirect('post_job')
 
 
 def payment_callback(request):
-    """Handle Paystack payment callback"""
     reference = request.GET.get('reference')
-    
+
     if not reference:
         messages.error(request, "No payment reference found")
         return redirect('post_job')
-    
+
     headers = {'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'}
-    
+
     try:
-        response = requests.get(
+        import requests as req
+        response = req.get(
             f'https://api.paystack.co/transaction/verify/{reference}',
             headers=headers,
             timeout=30
         )
         response_data = response.json()
-        
+
         if response_data.get('status') and response_data['data']['status'] == 'success':
             pending_job = request.session.get('pending_job')
             if pending_job:
@@ -358,27 +424,27 @@ def payment_callback(request):
                     is_featured=True,
                     is_active=True,
                 )
+                job.save()  # generate slug
                 del request.session['pending_job']
                 messages.success(request, f'✅ Payment successful! Your job "{job.title}" is now live!')
-                return redirect('job_detail', job_id=job.id)
+                return redirect('jobs:detail', slug=job.slug)
         else:
             messages.error(request, f"Payment verification failed: {response_data.get('message')}")
     except Exception as e:
         messages.error(request, f"Error verifying payment: {str(e)}")
-    
+
     return redirect('post_job')
 
 
 # ============================================================
-# MIGRATIONS & UTILITY
+# UTILITY & MIGRATION ENDPOINTS
 # ============================================================
 
 def run_migrations(request):
-    """Run migrations via URL (for Render free tier)"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
+
     try:
         call_command('migrate')
         return HttpResponse("✅ Migrations completed successfully!")
@@ -389,20 +455,18 @@ def run_migrations(request):
 @csrf_exempt
 @require_POST
 def paystack_webhook(request):
-    """Handle Paystack payment webhook notifications"""
     try:
         payload = json.loads(request.body)
         return HttpResponse(status=200)
-    except Exception as e:
+    except Exception:
         return HttpResponse(status=400)
 
 
 def create_categories_production(request):
-    """Create categories on production database"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
+
     categories = [
         ('Technology', 'technology', '💻'),
         ('Marketing', 'marketing', '📊'),
@@ -424,36 +488,34 @@ def create_categories_production(request):
         ('Real Estate', 'real-estate', '🏠'),
         ('Media', 'media', '🎬'),
     ]
-    
+
     created = 0
     for name, slug, icon in categories:
         obj, is_new = JobCategory.objects.get_or_create(name=name, slug=slug, icon=icon)
         if is_new:
             created += 1
-    
+
     return HttpResponse(f"✅ Created {created} new categories on production. Total: {JobCategory.objects.count()}")
 
 
 def categorize_jobs_production(request):
-    """Categorize jobs on production database"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
-    from .categorizer import auto_categorize_jobs
-    count = auto_categorize_jobs()
-    return HttpResponse(f"✅ Categorized {count} jobs on production")
+
+    try:
+        from .categorizer import auto_categorize_jobs
+        count = auto_categorize_jobs()
+        return HttpResponse(f"✅ Categorized {count} jobs on production")
+    except ImportError:
+        return HttpResponse("⚠️ Categorizer module not found", status=500)
 
 
 def force_assign_categories(request):
-    """Force assign categories to all jobs"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
-    from .models import JobListing, JobCategory
-    import re
-    
+
     keywords = {
         'Technology': ['software', 'developer', 'engineer', 'programming', 'code', 'it', 'tech', 'cloud', 'data', 'ai', 'python', 'java', 'javascript', 'react', 'django', 'fullstack', 'backend', 'frontend', 'devops'],
         'Marketing': ['marketing', 'seo', 'social media', 'content', 'brand', 'digital marketing', 'ppc', 'advertising', 'growth', 'campaign'],
@@ -475,107 +537,51 @@ def force_assign_categories(request):
         'Real Estate': ['real estate', 'property', 'realtor', 'broker', 'property management'],
         'Media': ['media', 'video', 'content creator', 'influencer', 'broadcast', 'production'],
     }
-    
+
     category_map = {cat.name.lower(): cat for cat in JobCategory.objects.all()}
     jobs = JobListing.objects.filter(category__isnull=True)
     total = jobs.count()
     categorized = 0
-    
+
     for job in jobs:
         text = f"{job.title} {job.description}".lower()
-        
         best_cat = None
         best_score = 0
-        
+
         for cat_name, cat_keywords in keywords.items():
             score = sum(1 for kw in cat_keywords if kw in text)
             if score > best_score:
                 best_score = score
                 best_cat = category_map.get(cat_name.lower())
-        
+
         if best_cat and best_score >= 2:
             job.category = best_cat
             job.save()
             categorized += 1
-    
+
     return HttpResponse(f"✅ Categorized {categorized} out of {total} jobs")
 
 
 def simple_categorize(request):
-    """Simple categorization for production"""
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    
-    from .models import JobListing, JobCategory
-    
-    categories = JobCategory.objects.all()
-    category_map = {cat.name.lower(): cat for cat in categories}
-    
-    keywords = {
-        'Technology': ['software', 'developer', 'engineer', 'programming', 'code', 'it', 'tech', 'cloud', 'data', 'ai', 'python', 'java', 'javascript', 'react', 'django', 'fullstack', 'backend', 'frontend', 'devops'],
-        'Marketing': ['marketing', 'seo', 'social media', 'content', 'brand', 'digital marketing', 'ppc', 'advertising', 'growth', 'campaign'],
-        'Sales': ['sales', 'account executive', 'business development', 'sales rep', 'sales manager', 'account manager', 'inside sales', 'bd'],
-        'Healthcare': ['health', 'medical', 'doctor', 'nurse', 'clinical', 'patient', 'care', 'healthcare', 'pharmacy', 'wellness'],
-        'Finance': ['finance', 'accountant', 'financial', 'banking', 'investment', 'tax', 'audit', 'controller', 'treasury'],
-        'Education': ['teacher', 'education', 'training', 'instructor', 'curriculum', 'academic', 'tutor', 'professor'],
-        'Administrative': ['administrative', 'assistant', 'office', 'coordinator', 'receptionist', 'admin', 'executive assistant'],
-        'Customer Service': ['customer service', 'support', 'customer success', 'help desk', 'call center', 'client service'],
-        'Design': ['designer', 'design', 'ui', 'ux', 'graphic', 'creative', 'visual', 'artist'],
-        'Engineering': ['mechanical', 'electrical', 'civil', 'construction', 'architect', 'structural', 'project engineer'],
-        'HR': ['human resources', 'hr', 'recruitment', 'recruiter', 'talent', 'people operations', 'hiring'],
-        'Legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance', 'regulatory', 'contract'],
-        'Operations': ['operations', 'supply chain', 'logistics', 'procurement', 'inventory', 'warehouse'],
-        'Data': ['data scientist', 'data analyst', 'data engineer', 'business intelligence', 'analytics'],
-        'Product': ['product manager', 'product owner', 'product management', 'product development'],
-        'Writing': ['writer', 'editor', 'content', 'copywriter', 'journalist', 'author'],
-        'Consulting': ['consultant', 'consulting', 'advisory', 'strategy', 'management consulting'],
-        'Real Estate': ['real estate', 'property', 'realtor', 'broker', 'property management'],
-        'Media': ['media', 'video', 'content creator', 'influencer', 'broadcast', 'production'],
-    }
-    
-    jobs = JobListing.objects.filter(category__isnull=True)
-    total = jobs.count()
-    categorized = 0
-    
-    for job in jobs:
-        text = f"{job.title} {job.description}".lower()
-        
-        best_cat = None
-        best_score = 0
-        
-        for cat_name, cat_keywords in keywords.items():
-            score = sum(1 for kw in cat_keywords if kw in text)
-            if score > best_score:
-                best_score = score
-                best_cat = category_map.get(cat_name.lower())
-        
-        if best_cat and best_score >= 2:
-            job.category = best_cat
-            job.save()
-            categorized += 1
-    
-    return HttpResponse(f"✅ Categorized {categorized} out of {total} jobs")
-from django.http import FileResponse, Http404
-import os
-from django.conf import settings
-from urllib.parse import unquote
+    return force_assign_categories(request)
+
+
+# ============================================================
+# MEDIA FILE SERVING
+# ============================================================
 
 def serve_media_file(request, file_path):
-    """Directly serve media files"""
-    # Decode URL-encoded path
     file_path = unquote(file_path)
-    
-    # Construct the full file path
     full_path = os.path.join(settings.MEDIA_ROOT, file_path)
-    
-    # Security check: ensure the path is within MEDIA_ROOT
+
     if not full_path.startswith(os.path.abspath(settings.MEDIA_ROOT)):
         raise Http404("Access denied")
-    
-    # Check if the file exists
+
     if os.path.exists(full_path) and os.path.isfile(full_path):
-        # Determine content type based on file extension
+        content_type = 'application/octet-stream'
         if full_path.endswith('.pdf'):
             content_type = 'application/pdf'
         elif full_path.endswith('.doc'):
@@ -586,15 +592,12 @@ def serve_media_file(request, file_path):
             content_type = 'image/jpeg'
         elif full_path.endswith('.png'):
             content_type = 'image/png'
-        else:
-            content_type = 'application/octet-stream'
-        
-        # Open and return the file
+
         try:
             response = FileResponse(open(full_path, 'rb'), content_type=content_type)
             response['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
             return response
         except Exception as e:
             raise Http404(f"Error opening file: {str(e)}")
-    
+
     raise Http404("File not found")
