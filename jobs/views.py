@@ -1,3 +1,4 @@
+import html
 import json
 import os
 from urllib.parse import unquote
@@ -191,7 +192,7 @@ def category_detail(request, category_name):
 
 
 # ============================================================
-# SITEMAP
+# SITEMAP – ESCAPED VERSION (FIXED)
 # ============================================================
 
 def generate_sitemap(request):
@@ -208,29 +209,32 @@ def generate_sitemap(request):
     <priority>1.0</priority>
 </url>\n'''
 
-    # Job pages
+    # Job pages – escape the URL
     for job in jobs:
+        url = html.escape(f"https://globalgigs-0096.onrender.com/jobs/{job.slug}/")
         xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/jobs/{job.slug}/</loc>
+    <loc>{url}</loc>
     <lastmod>{job.created_at.strftime("%Y-%m-%d")}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
 </url>\n'''
 
-    # Company pages
+    # Company pages – escape the URL
     companies = JobListing.objects.filter(is_active=True).values('company_name').distinct()
     for company in companies:
+        url = html.escape(f"https://globalgigs-0096.onrender.com/companies/{company['company_name']}/")
         xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/companies/{company['company_name']}/</loc>
+    <loc>{url}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>\n'''
 
-    # Category pages
+    # Category pages – escape the URL
     categories = JobCategory.objects.filter(jobs__is_active=True).distinct()
     for cat in categories:
+        url = html.escape(f"https://globalgigs-0096.onrender.com/categories/{cat.name}/")
         xml += f'''<url>
-    <loc>https://globalgigs-0096.onrender.com/categories/{cat.name}/</loc>
+    <loc>{url}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>\n'''
