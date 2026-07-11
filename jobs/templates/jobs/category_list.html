@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Job Categories - GlobalGigs{% endblock %}
+{% block title %}Job Categories – Browse Remote Jobs by Category | GlobalGigs{% endblock %}
+
+{% block description %}Browse remote jobs by category on GlobalGiGs. Find opportunities in Technology, Marketing, Healthcare, Design, Finance, and more. 264+ live jobs available.{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -24,6 +26,12 @@
                 <p class="text-lg">No categories found</p>
             </div>
         {% endfor %}
+    </div>
+
+    <!-- Optional: Add a call-to-action for employers -->
+    <div class="mt-12 text-center">
+        <p class="text-zinc-400">Don't see your category?</p>
+        <a href="{% url 'post_job' %}" class="text-emerald-400 hover:text-emerald-300 transition font-medium">Post a job →</a>
     </div>
 </div>
 {% endblock %}
