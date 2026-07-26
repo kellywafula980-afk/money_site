@@ -3,6 +3,7 @@ import json
 import os
 import hmac
 import hashlib
+import logging
 from urllib.parse import unquote
 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -21,8 +22,10 @@ from datetime import timedelta
 
 from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
-from dashboard.models import Subscription   # ✅ Added
+from dashboard.models import Subscription
 
+# ✅ Configure logging
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # ROBOTS.TXT
@@ -101,7 +104,7 @@ def job_detail_view(request, slug):
                 job.company_description = parsed.get('about_company', '')
                 job.save()
         except Exception as e:
-            print(f"⚠️ Error parsing job {job.id}: {e}")
+            logger.error(f"Error parsing job {job.id}: {e}")
 
     related_jobs = JobListing.objects.filter(
         category=job.category
@@ -338,7 +341,7 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (UPDATED WITH REAL PLAN CODES)
+# JOB POSTING & PAYMENT (WITH ERROR LOGGING)
 # ============================================================
 
 def post_job_page(request):
@@ -424,8 +427,10 @@ def initiate_payment(request):
                 else:
                     error_msg = response_data.get('message', 'Unknown error')
                     messages.error(request, f"Paystack Error: {error_msg}")
+                    logger.error(f"One-time payment error: {response_data}")
             except Exception as e:
                 messages.error(request, f"Connection Error: {str(e)}")
+                logger.exception("One-time payment exception")
 
             return redirect('post_job')
 
@@ -439,7 +444,7 @@ def initiate_subscription(request):
     """
     plan_id = request.session.get('selected_plan', 'starter')
     
-    # 🔁 REAL PLAN CODES FROM PAYSTACK DASHBOARD
+    # REAL PLAN CODES FROM PAYSTACK DASHBOARD
     plan_codes = {
         'starter': 'PLN_bhm6kvqs59l7ipe',
         'pro': 'PLN_bq99h747bu6dxti',
@@ -449,11 +454,13 @@ def initiate_subscription(request):
     plan_code = plan_codes.get(plan_id)
     if not plan_code:
         messages.error(request, "Invalid plan selected.")
+        logger.error(f"Invalid plan_id: {plan_id}")
         return redirect('dashboard:pricing')
     
     user_email = request.user.email
     if not user_email:
         messages.error(request, "Your account does not have an email address.")
+        logger.error(f"User {request.user.id} has no email")
         return redirect('dashboard:pricing')
     
     headers = {
@@ -463,16 +470,16 @@ def initiate_subscription(request):
     
     data = {
         'email': user_email,
-        'plan': plan_code,  # This triggers subscription
+        'plan': plan_code,
         'callback_url': request.build_absolute_uri(reverse('payment_callback')),
         'metadata': {
             'user_id': request.user.id,
             'plan_type': plan_id,
-            'subscription': True,  # Flag for callback
+            'subscription': True,
         }
     }
     
-    print(f"🔍 Sending subscription to Paystack: {data}")
+    logger.info(f"Sending subscription to Paystack: {data}")
     
     try:
         import requests as req
@@ -483,7 +490,7 @@ def initiate_subscription(request):
             timeout=30
         )
         response_data = response.json()
-        print(f"🔍 Paystack Subscription Response: {response_data}")
+        logger.error(f"Paystack subscription response: {response_data}")
         
         if response_data.get('status'):
             request.session['paystack_ref'] = response_data['data']['reference']
@@ -491,8 +498,10 @@ def initiate_subscription(request):
         else:
             error_msg = response_data.get('message', 'Unknown error')
             messages.error(request, f"Paystack Error: {error_msg}")
+            logger.error(f"Paystack subscription error: {response_data}")
     except Exception as e:
         messages.error(request, f"Connection Error: {str(e)}")
+        logger.exception("Subscription initialization exception")
     
     return redirect('dashboard:pricing')
 
@@ -533,7 +542,6 @@ def payment_callback(request):
                 subscription.job_posts_remaining = subscription.get_plan_limit()
                 subscription.expires_at = timezone.now() + timedelta(days=30)
                 subscription.next_billing_date = timezone.now() + timedelta(days=30)
-                # Optionally store paystack codes if available
                 if 'subscription_code' in response_data['data']:
                     subscription.paystack_subscription_code = response_data['data']['subscription_code']
                 subscription.save()
@@ -558,7 +566,6 @@ def payment_callback(request):
                     job.save()
                     del request.session['pending_job']
                     
-                    # Decrement subscription posts if user has one
                     if request.user.is_authenticated:
                         try:
                             request.user.subscription.use_job_post()
@@ -583,33 +590,20 @@ def payment_callback(request):
 def paystack_webhook(request):
     """
     Handle Paystack webhook events for subscriptions.
-    For production, uncomment the signature verification.
     """
-    # Verify signature (optional but recommended for production)
-    # paystack_signature = request.headers.get('x-paystack-signature')
-    # secret = settings.PAYSTACK_SECRET_KEY
-    # computed_signature = hmac.new(
-    #     secret.encode('utf-8'),
-    #     request.body,
-    #     hashlib.sha512
-    # ).hexdigest()
-    # if not hmac.compare_digest(paystack_signature, computed_signature):
-    #     return HttpResponse(status=401)
-    
     try:
         payload = json.loads(request.body)
         event = payload.get('event')
         data = payload.get('data')
         
-        print(f"🔔 Webhook event: {event}")
-        print(f"🔔 Webhook data: {data}")
+        logger.info(f"Webhook event: {event}")
+        logger.info(f"Webhook data: {data}")
         
         if event == 'subscription.create':
             subscription_code = data.get('subscription_code')
             email = data.get('customer', {}).get('email')
             plan_code = data.get('plan', {}).get('plan_code')
             
-            # REAL PLAN MAP (MATCHES THE CODES ABOVE)
             plan_map = {
                 'PLN_bhm6kvqs59l7ipe': 'starter',
                 'PLN_bq99h747bu6dxti': 'pro',
@@ -620,7 +614,7 @@ def paystack_webhook(request):
             try:
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
-                print(f"❌ User with email {email} not found")
+                logger.error(f"User with email {email} not found")
                 return HttpResponse(status=200)
             
             subscription, created = Subscription.objects.get_or_create(
@@ -644,7 +638,7 @@ def paystack_webhook(request):
                 subscription.next_billing_date = timezone.now() + timedelta(days=30)
                 subscription.save()
             
-            print(f"✅ Subscription {subscription_code} activated for {email}")
+            logger.info(f"✅ Subscription {subscription_code} activated for {email}")
         
         elif event == 'invoice.payment_success':
             subscription_code = data.get('subscription', {}).get('subscription_code')
@@ -656,9 +650,9 @@ def paystack_webhook(request):
                 subscription.next_billing_date = timezone.now() + timedelta(days=30)
                 subscription.is_active = True
                 subscription.save()
-                print(f"✅ Subscription {subscription_code} renewed for {subscription.user.email}")
+                logger.info(f"✅ Subscription {subscription_code} renewed for {subscription.user.email}")
             except Subscription.DoesNotExist:
-                print(f"❌ Subscription {subscription_code} not found")
+                logger.error(f"❌ Subscription {subscription_code} not found")
         
         elif event == 'invoice.payment_failed':
             subscription_code = data.get('subscription', {}).get('subscription_code')
@@ -666,9 +660,9 @@ def paystack_webhook(request):
                 subscription = Subscription.objects.get(paystack_subscription_code=subscription_code)
                 subscription.is_active = False
                 subscription.save()
-                print(f"❌ Subscription {subscription_code} deactivated due to payment failure")
+                logger.error(f"❌ Subscription {subscription_code} deactivated due to payment failure")
             except Subscription.DoesNotExist:
-                print(f"❌ Subscription {subscription_code} not found")
+                logger.error(f"❌ Subscription {subscription_code} not found")
         
         elif event == 'subscription.disable':
             subscription_code = data.get('subscription_code')
@@ -676,14 +670,14 @@ def paystack_webhook(request):
                 subscription = Subscription.objects.get(paystack_subscription_code=subscription_code)
                 subscription.is_active = False
                 subscription.save()
-                print(f"❌ Subscription {subscription_code} disabled")
+                logger.error(f"❌ Subscription {subscription_code} disabled")
             except Subscription.DoesNotExist:
                 pass
         
         return HttpResponse(status=200)
     
     except Exception as e:
-        print(f"❌ Webhook error: {str(e)}")
+        logger.exception("Webhook error")
         return HttpResponse(status=400)
 
 
