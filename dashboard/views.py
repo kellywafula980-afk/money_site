@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.db.models import Count, Q
+from django.urls import reverse  # ✅ ADDED for reverse redirection
 from jobs.models import JobListing, JobApplication, JobCategory
-from .models import UserProfile, SavedJob
+from .models import UserProfile, SavedJob, Subscription  # ✅ ADDED Subscription
 from .forms import JobPostForm, UserProfileForm
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -269,3 +270,91 @@ def review_application(request, application_id):
     application.save()
     messages.success(request, f'✅ Application from {application.full_name} marked as reviewed!')
     return redirect('dashboard:applications')
+
+
+# ============================================================
+# 🆕 PRICING & SUBSCRIPTION VIEWS (ADDED)
+# ============================================================
+
+def pricing_page(request):
+    """
+    Display pricing tiers and subscription options.
+    """
+    plans = [
+        {
+            'id': 'starter',
+            'name': 'Starter',
+            'price_kes': 3700,
+            'price_usd': 29,
+            'posts': 5,
+            'features': [
+                '5 job posts per month',
+                'Standard visibility',
+                '30-day job expiry',
+                'Basic support',
+            ],
+            'popular': False,
+            'plan_code': 'PLN_starter_abc123',  # 🔁 REPLACE with actual code from Paystack
+        },
+        {
+            'id': 'pro',
+            'name': 'Professional',
+            'price_kes': 10200,
+            'price_usd': 79,
+            'posts': 25,
+            'features': [
+                '25 job posts per month',
+                'Featured badge on listings',
+                'Highlighted in search results',
+                'Social media promotion',
+                'Priority support',
+            ],
+            'popular': True,
+            'plan_code': 'PLN_pro_xyz789',  # 🔁 REPLACE with actual code from Paystack
+        },
+        {
+            'id': 'enterprise',
+            'name': 'Enterprise',
+            'price_kes': 32000,
+            'price_usd': 249,
+            'posts': 'Unlimited',
+            'features': [
+                'Unlimited job posts',
+                'Premium placement on homepage',
+                'Dedicated company profile page',
+                'Resume database access',
+                'Advanced analytics',
+                '24/7 priority support',
+            ],
+            'popular': False,
+            'plan_code': 'PLN_enterprise_def456',  # 🔁 REPLACE with actual code from Paystack
+        },
+    ]
+    
+    current_subscription = None
+    if request.user.is_authenticated:
+        try:
+            current_subscription = request.user.subscription
+        except Subscription.DoesNotExist:
+            pass
+    
+    context = {
+        'plans': plans,
+        'current_subscription': current_subscription,
+    }
+    return render(request, 'dashboard/pricing.html', context)
+
+
+@login_required
+def subscribe_plan(request, plan_id):
+    """
+    Store selected plan in session and redirect to payment initiation.
+    """
+    valid_plans = ['starter', 'pro', 'enterprise']
+    if plan_id not in valid_plans:
+        messages.error(request, "Invalid plan selected.")
+        return redirect('pricing')
+    
+    # Store the selected plan in session
+    request.session['selected_plan'] = plan_id
+    return redirect('jobs:initiate_subscription')

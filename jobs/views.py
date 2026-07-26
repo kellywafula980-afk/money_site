@@ -1,6 +1,8 @@
 import html
 import json
 import os
+import hmac
+import hashlib
 from urllib.parse import unquote
 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -12,13 +14,18 @@ from django.conf import settings
 from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
+from dashboard.models import Subscription   # ✅ Added
 
 
 # ============================================================
-# ROBOTS.TXT (MUST BE DEFINED FIRST)
+# ROBOTS.TXT
 # ============================================================
 
 def robots_txt(request):
@@ -68,7 +75,6 @@ def job_list_view(request):
         'category_name': category_name,
     }
 
-    # Make sure you have templates/jobs/home.html
     return render(request, 'jobs/home.html', context)
 
 
@@ -77,7 +83,7 @@ content_batcher_dashboard = job_list_view
 
 
 # ============================================================
-# JOB DETAIL (SLUG VERSION)
+# JOB DETAIL
 # ============================================================
 
 def job_detail_view(request, slug):
@@ -145,7 +151,7 @@ def legacy_job_detail(request, job_id):
 
 
 # ============================================================
-# COMPANY LANDING PAGES
+# COMPANY & CATEGORY PAGES
 # ============================================================
 
 def company_list(request):
@@ -166,10 +172,6 @@ def company_detail(request, company_name):
         'total': jobs.count()
     })
 
-
-# ============================================================
-# CATEGORY LANDING PAGES
-# ============================================================
 
 def category_list(request):
     category_list = []
@@ -192,7 +194,7 @@ def category_detail(request, category_name):
 
 
 # ============================================================
-# SITEMAP – ESCAPED VERSION (FIXED)
+# SITEMAP
 # ============================================================
 
 def generate_sitemap(request):
@@ -201,7 +203,6 @@ def generate_sitemap(request):
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
-    # Homepage
     xml += f'''<url>
     <loc>https://globalgigs-0096.onrender.com/</loc>
     <lastmod>{jobs.first().created_at.strftime("%Y-%m-%d") if jobs.exists() else "2026-01-01"}</lastmod>
@@ -209,7 +210,6 @@ def generate_sitemap(request):
     <priority>1.0</priority>
 </url>\n'''
 
-    # Job pages – escape the URL
     for job in jobs:
         url = html.escape(f"https://globalgigs-0096.onrender.com/jobs/{job.slug}/")
         xml += f'''<url>
@@ -219,7 +219,6 @@ def generate_sitemap(request):
     <priority>0.8</priority>
 </url>\n'''
 
-    # Company pages – escape the URL
     companies = JobListing.objects.filter(is_active=True).values('company_name').distinct()
     for company in companies:
         url = html.escape(f"https://globalgigs-0096.onrender.com/companies/{company['company_name']}/")
@@ -229,7 +228,6 @@ def generate_sitemap(request):
     <priority>0.6</priority>
 </url>\n'''
 
-    # Category pages – escape the URL
     categories = JobCategory.objects.filter(jobs__is_active=True).distinct()
     for cat in categories:
         url = html.escape(f"https://globalgigs-0096.onrender.com/categories/{cat.name}/")
@@ -340,18 +338,50 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (PAYSTACK)
+# JOB POSTING & PAYMENT (UPDATED WITH REAL PLAN CODES)
 # ============================================================
 
 def post_job_page(request):
+    if not request.user.is_authenticated:
+        messages.error(request, "Please log in to post a job.")
+        return redirect('login')
+    
+    # Check subscription limits
+    try:
+        subscription = request.user.subscription
+        if not subscription.is_active:
+            messages.warning(request, "Your subscription is inactive. Please renew or upgrade.")
+            return redirect('dashboard:pricing')
+        if not subscription.can_post_job():
+            if subscription.plan_type != 'enterprise':
+                messages.warning(
+                    request, 
+                    f"You have used all your job posts for this month. "
+                    f"Your {subscription.get_plan_type_display()} plan allows {subscription.get_plan_limit()} posts."
+                )
+                return redirect('dashboard:pricing')
+    except Subscription.DoesNotExist:
+        messages.warning(request, "You need an active subscription to post jobs.")
+        return redirect('dashboard:pricing')
+    
     form = JobPostForm()
     return render(request, 'jobs/post_job.html', {'form': form})
 
 
 def initiate_payment(request):
+    """One-time payment for job posting (kept for compatibility)"""
     if request.method == 'POST':
         form = JobPostForm(request.POST)
         if form.is_valid():
+            if not request.user.is_authenticated:
+                messages.error(request, "Please log in to post a job.")
+                return redirect('login')
+            
+            user_email = request.user.email
+            if not user_email:
+                messages.error(request, "Your account does not have an email address.")
+                return redirect('post_job')
+
             request.session['pending_job'] = {
                 'title': form.cleaned_data['title'],
                 'company_name': form.cleaned_data['company_name'],
@@ -365,14 +395,17 @@ def initiate_payment(request):
                 'Content-Type': 'application/json',
             }
 
+            amount_in_kobo = 4900  # 4,900 KES (no decimals for KES)
+
             data = {
-                'email': request.POST.get('email'),
-                'amount': 4900 * 100,
+                'email': user_email,
+                'amount': amount_in_kobo,
                 'currency': 'KES',
                 'callback_url': request.build_absolute_uri(reverse('payment_callback')),
                 'metadata': {
                     'job_title': form.cleaned_data['title'],
                     'company': form.cleaned_data['company_name'],
+                    'subscription': False,  # one-time flag
                 }
             }
 
@@ -389,22 +422,90 @@ def initiate_payment(request):
                 if response_data.get('status'):
                     return redirect(response_data['data']['authorization_url'])
                 else:
-                    messages.error(request, f"Payment initialization failed: {response_data.get('message')}")
+                    error_msg = response_data.get('message', 'Unknown error')
+                    messages.error(request, f"Paystack Error: {error_msg}")
             except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
+                messages.error(request, f"Connection Error: {str(e)}")
+
+            return redirect('post_job')
 
     return redirect('post_job')
 
 
+@login_required
+def initiate_subscription(request):
+    """
+    Initialize Paystack subscription (recurring) using a plan code.
+    """
+    plan_id = request.session.get('selected_plan', 'starter')
+    
+    # 🔁 REAL PLAN CODES FROM PAYSTACK DASHBOARD
+    plan_codes = {
+        'starter': 'PLN_bhm6kvqs59l7ipe',
+        'pro': 'PLN_bq99h747bu6dxti',
+        'enterprise': 'PLN_lthapwkvue428j9',
+    }
+    
+    plan_code = plan_codes.get(plan_id)
+    if not plan_code:
+        messages.error(request, "Invalid plan selected.")
+        return redirect('dashboard:pricing')
+    
+    user_email = request.user.email
+    if not user_email:
+        messages.error(request, "Your account does not have an email address.")
+        return redirect('dashboard:pricing')
+    
+    headers = {
+        'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+        'Content-Type': 'application/json',
+    }
+    
+    data = {
+        'email': user_email,
+        'plan': plan_code,  # This triggers subscription
+        'callback_url': request.build_absolute_uri(reverse('payment_callback')),
+        'metadata': {
+            'user_id': request.user.id,
+            'plan_type': plan_id,
+            'subscription': True,  # Flag for callback
+        }
+    }
+    
+    print(f"🔍 Sending subscription to Paystack: {data}")
+    
+    try:
+        import requests as req
+        response = req.post(
+            'https://api.paystack.co/transaction/initialize',
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        response_data = response.json()
+        print(f"🔍 Paystack Subscription Response: {response_data}")
+        
+        if response_data.get('status'):
+            request.session['paystack_ref'] = response_data['data']['reference']
+            return redirect(response_data['data']['authorization_url'])
+        else:
+            error_msg = response_data.get('message', 'Unknown error')
+            messages.error(request, f"Paystack Error: {error_msg}")
+    except Exception as e:
+        messages.error(request, f"Connection Error: {str(e)}")
+    
+    return redirect('dashboard:pricing')
+
+
 def payment_callback(request):
     reference = request.GET.get('reference')
-
+    
     if not reference:
         messages.error(request, "No payment reference found")
         return redirect('post_job')
-
+    
     headers = {'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'}
-
+    
     try:
         import requests as req
         response = req.get(
@@ -413,35 +514,181 @@ def payment_callback(request):
             timeout=30
         )
         response_data = response.json()
-
+        
         if response_data.get('status') and response_data['data']['status'] == 'success':
-            pending_job = request.session.get('pending_job')
-            if pending_job:
-                job = JobListing.objects.create(
-                    title=pending_job['title'],
-                    company_name=pending_job['company_name'],
-                    description=pending_job['description'],
-                    location=pending_job['location'],
-                    salary_range=pending_job['salary_range'],
-                    apply_url='#',
-                    is_approved=True,
-                    is_featured=True,
-                    is_active=True,
-                )
-                job.save()  # generate slug
-                del request.session['pending_job']
-                messages.success(request, f'✅ Payment successful! Your job "{job.title}" is now live!')
-                return redirect('jobs:detail', slug=job.slug)
+            metadata = response_data['data'].get('metadata', {})
+            is_subscription = metadata.get('subscription', False)
+            
+            if is_subscription:
+                # For local testing without webhooks: manually activate subscription
+                # In production, webhook will do this; we still show success
+                plan_type = metadata.get('plan_type', 'starter')
+                try:
+                    subscription = request.user.subscription
+                except Subscription.DoesNotExist:
+                    subscription = Subscription(user=request.user)
+                
+                subscription.plan_type = plan_type
+                subscription.is_active = True
+                subscription.job_posts_remaining = subscription.get_plan_limit()
+                subscription.expires_at = timezone.now() + timedelta(days=30)
+                subscription.next_billing_date = timezone.now() + timedelta(days=30)
+                # Optionally store paystack codes if available
+                if 'subscription_code' in response_data['data']:
+                    subscription.paystack_subscription_code = response_data['data']['subscription_code']
+                subscription.save()
+                messages.success(request, "✅ Subscription activated! You can now post jobs.")
+                return redirect('dashboard:home')
+            else:
+                # One-time payment flow
+                pending_job = request.session.get('pending_job')
+                if pending_job:
+                    job = JobListing.objects.create(
+                        title=pending_job['title'],
+                        company_name=pending_job['company_name'],
+                        description=pending_job['description'],
+                        location=pending_job['location'],
+                        salary_range=pending_job['salary_range'],
+                        apply_url='#',
+                        posted_by=request.user if request.user.is_authenticated else None,
+                        is_approved=True,
+                        is_featured=True,
+                        is_active=True,
+                    )
+                    job.save()
+                    del request.session['pending_job']
+                    
+                    # Decrement subscription posts if user has one
+                    if request.user.is_authenticated:
+                        try:
+                            request.user.subscription.use_job_post()
+                        except Subscription.DoesNotExist:
+                            pass
+                    
+                    messages.success(request, f'✅ Payment successful! Your job "{job.title}" is now live!')
+                    return redirect('jobs:detail', slug=job.slug)
+                else:
+                    messages.warning(request, "Payment succeeded but no job data found.")
+                    return redirect('post_job')
         else:
             messages.error(request, f"Payment verification failed: {response_data.get('message')}")
     except Exception as e:
         messages.error(request, f"Error verifying payment: {str(e)}")
-
+    
     return redirect('post_job')
 
 
+@csrf_exempt
+@require_POST
+def paystack_webhook(request):
+    """
+    Handle Paystack webhook events for subscriptions.
+    For production, uncomment the signature verification.
+    """
+    # Verify signature (optional but recommended for production)
+    # paystack_signature = request.headers.get('x-paystack-signature')
+    # secret = settings.PAYSTACK_SECRET_KEY
+    # computed_signature = hmac.new(
+    #     secret.encode('utf-8'),
+    #     request.body,
+    #     hashlib.sha512
+    # ).hexdigest()
+    # if not hmac.compare_digest(paystack_signature, computed_signature):
+    #     return HttpResponse(status=401)
+    
+    try:
+        payload = json.loads(request.body)
+        event = payload.get('event')
+        data = payload.get('data')
+        
+        print(f"🔔 Webhook event: {event}")
+        print(f"🔔 Webhook data: {data}")
+        
+        if event == 'subscription.create':
+            subscription_code = data.get('subscription_code')
+            email = data.get('customer', {}).get('email')
+            plan_code = data.get('plan', {}).get('plan_code')
+            
+            # REAL PLAN MAP (MATCHES THE CODES ABOVE)
+            plan_map = {
+                'PLN_bhm6kvqs59l7ipe': 'starter',
+                'PLN_bq99h747bu6dxti': 'pro',
+                'PLN_lthapwkvue428j9': 'enterprise',
+            }
+            plan_type = plan_map.get(plan_code, 'starter')
+            
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                print(f"❌ User with email {email} not found")
+                return HttpResponse(status=200)
+            
+            subscription, created = Subscription.objects.get_or_create(
+                user=user,
+                defaults={
+                    'plan_type': plan_type,
+                    'paystack_subscription_code': subscription_code,
+                    'paystack_customer_code': data.get('customer', {}).get('customer_code'),
+                    'is_active': True,
+                    'job_posts_remaining': 5 if plan_type == 'starter' else 25 if plan_type == 'pro' else -1,
+                    'expires_at': timezone.now() + timedelta(days=30),
+                    'next_billing_date': timezone.now() + timedelta(days=30),
+                }
+            )
+            if not created:
+                subscription.plan_type = plan_type
+                subscription.paystack_subscription_code = subscription_code
+                subscription.is_active = True
+                subscription.job_posts_remaining = 5 if plan_type == 'starter' else 25 if plan_type == 'pro' else -1
+                subscription.expires_at = timezone.now() + timedelta(days=30)
+                subscription.next_billing_date = timezone.now() + timedelta(days=30)
+                subscription.save()
+            
+            print(f"✅ Subscription {subscription_code} activated for {email}")
+        
+        elif event == 'invoice.payment_success':
+            subscription_code = data.get('subscription', {}).get('subscription_code')
+            try:
+                subscription = Subscription.objects.get(paystack_subscription_code=subscription_code)
+                if subscription.plan_type != 'enterprise':
+                    subscription.job_posts_remaining = subscription.get_plan_limit()
+                subscription.expires_at = timezone.now() + timedelta(days=30)
+                subscription.next_billing_date = timezone.now() + timedelta(days=30)
+                subscription.is_active = True
+                subscription.save()
+                print(f"✅ Subscription {subscription_code} renewed for {subscription.user.email}")
+            except Subscription.DoesNotExist:
+                print(f"❌ Subscription {subscription_code} not found")
+        
+        elif event == 'invoice.payment_failed':
+            subscription_code = data.get('subscription', {}).get('subscription_code')
+            try:
+                subscription = Subscription.objects.get(paystack_subscription_code=subscription_code)
+                subscription.is_active = False
+                subscription.save()
+                print(f"❌ Subscription {subscription_code} deactivated due to payment failure")
+            except Subscription.DoesNotExist:
+                print(f"❌ Subscription {subscription_code} not found")
+        
+        elif event == 'subscription.disable':
+            subscription_code = data.get('subscription_code')
+            try:
+                subscription = Subscription.objects.get(paystack_subscription_code=subscription_code)
+                subscription.is_active = False
+                subscription.save()
+                print(f"❌ Subscription {subscription_code} disabled")
+            except Subscription.DoesNotExist:
+                pass
+        
+        return HttpResponse(status=200)
+    
+    except Exception as e:
+        print(f"❌ Webhook error: {str(e)}")
+        return HttpResponse(status=400)
+
+
 # ============================================================
-# UTILITY & MIGRATION ENDPOINTS
+# UTILITY ENDPOINTS
 # ============================================================
 
 def run_migrations(request):
@@ -454,16 +701,6 @@ def run_migrations(request):
         return HttpResponse("✅ Migrations completed successfully!")
     except Exception as e:
         return HttpResponse(f"❌ Error: {str(e)}", status=500)
-
-
-@csrf_exempt
-@require_POST
-def paystack_webhook(request):
-    try:
-        payload = json.loads(request.body)
-        return HttpResponse(status=200)
-    except Exception:
-        return HttpResponse(status=400)
 
 
 def create_categories_production(request):

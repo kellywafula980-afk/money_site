@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pricing - GlobalGigs{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Dark page background */
+  body {
+    background: #0a0a0a;
+    color: #f0f0f0;
+  }
+  .pricing-wrapper {
+    background: #0a0a0a;
+    min-height: 100vh;
+    padding: 3rem 0;
+  }
+  .pricing-header h1 {
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-size: 2.5rem;
+  }
+  .pricing-header p {
+    color: #adb5bd;
+    font-size: 1.1rem;
+  }
+
+  /* Card styling – dark glass, compact */
+  .pricing-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    /* add a small margin to push cards apart if needed */
+  }
+  .pricing-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px #333;
+  }
+  .pricing-card .card-header {
+    border-bottom: none;
+    padding: 1.2rem 1.2rem 0.2rem;
+    background: transparent;
+  }
+  .pricing-card .card-body {
+    padding: 0.8rem 1.2rem 1.2rem;
+  }
+  .pricing-card .card-footer {
+    background: transparent;
+    border-top: none;
+    padding: 0 1.2rem 1.2rem;
+  }
+
+  .pricing-card .plan-name {
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: -0.3px;
+    color: #f8f9fa;
+  }
+  .pricing-card .price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4dabf7;
+  }
+  .pricing-card .price small {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #868e96;
+  }
+  .pricing-card .feature-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 1rem 0 0;
+  }
+  .pricing-card .feature-list li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #ced4da;
+    font-size: 0.9rem;
+  }
+  .pricing-card .feature-list li:last-child {
+    border-bottom: none;
+  }
+  .pricing-card .feature-list .check {
+    color: #69db7c;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+
+  .popular-badge {
+    position: absolute;
+    top: -10px;
+    right: 15px;
+    background: #4dabf7;
+    color: #0a0a0a;
+    padding: 0.2rem 1rem;
+    border-radius: 30px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(77, 171, 247, 0.4);
+  }
+
+  .btn-subscribe {
+    border-radius: 50px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    width: 100%;
+    background: #4dabf7;
+    border: none;
+    color: #0a0a0a;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+  }
+  .btn-subscribe:hover {
+    background: #74c0fc;
+    color: #0a0a0a;
+  }
+  .btn-subscribe:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #2a2a2a;
+    color: #adb5bd;
+  }
+
+  .enterprise-card {
+    border: 2px solid #4dabf7;
+    background: #111;
+  }
+  .enterprise-card .price {
+    color: #ffd43b;
+  }
+
+  .footer-text {
+    color: #868e96;
+    font-size: 0.9rem;
+  }
+  .footer-text a {
+    color: #74c0fc;
+    text-decoration: none;
+  }
+  .footer-text a:hover {
+    color: #4dabf7;
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pricing-wrapper">
+  <div class="container">
+    <div class="pricing-header text-center mb-4">
+      <h1>Choose Your Plan</h1>
+      <p>Scale your hiring with the perfect plan for your business</p>
+    </div>
+
+    <!-- ✅ Increased gap: g-5 gives more space between cards -->
+    <div class="row row-cols-1 row-cols-md-3 g-5 align-items-stretch">
+      {% for plan in plans %}
+      <div class="col">
+        <div class="card pricing-card h-100 {% if plan.id == 'enterprise' %}enterprise-card{% endif %}">
+          {% if plan.popular %}
+          <div class="popular-badge">🔥 Most Popular</div>
+          {% endif %}
+
+          <div class="card-header text-center">
+            <div class="plan-name">{{ plan.name }}</div>
+          </div>
+
+          <div class="card-body text-center">
+            <div class="price">
+              ${{ plan.price_usd }}<small>/mo</small>
+            </div>
+            <p class="text-muted small" style="font-size:0.7rem;">or KES {{ plan.price_kes }}/mo</p>
+
+            <ul class="feature-list text-start">
+              {% for feature in plan.features %}
+              <li>
+                <span class="check">✓</span>
+                {{ feature }}
+              </li>
+              {% endfor %}
+              <li class="mt-1 fw-bold" style="color: #4dabf7; font-size:0.85rem;">
+                <span class="check">✦</span>
+                {{ plan.posts }} job posts per month
+              </li>
+            </ul>
+          </div>
+
+          <div class="card-footer">
+            {% if current_subscription and current_subscription.plan_type == plan.id and current_subscription.is_active %}
+              <button class="btn btn-subscribe" disabled>
+                ✓ Current Plan
+              </button>
+            {% else %}
+              <a href="{% url 'dashboard:subscribe_plan' plan.id %}" class="btn btn-subscribe">
+                Subscribe Now
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-center mt-5 pt-2 footer-text">
+      <p>All plans include: 30‑day job listing • basic analytics • email support.</p>
+      <p>Need a custom plan? <a href="mailto:support@globalgigs.com">Contact us</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -5,19 +5,27 @@ import os
 import dj_database_url
 from pathlib import Path
 
+# ========== LOAD ENVIRONMENT VARIABLES ==========
+# Load .env file for local development (does nothing on Render)
+from dotenv import load_dotenv
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-47!tq+2e5$)r_66=^@-ne80bm$o!dntn$ugnx9-$m%1a1x(jcc'
+# ========== SECURITY WARNING ==========
+# Keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set!")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = "True"
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# Hosts allowed to serve the application
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-
-# Application definition
+# ========== APPLICATION DEFINITION ==========
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -25,6 +33,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Your custom apps
     'jobs',
     'dashboard',
     'django.contrib.sitemaps',
@@ -32,8 +41,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # For serving static files efficiently
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -46,7 +55,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # ✅ Added templates directory
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -60,20 +69,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-
 # ========== DATABASE CONFIGURATION ==========
-# PostgreSQL (Production) or SQLite (Fallback)
+# Render provides DATABASE_URL for PostgreSQL.
+# If not present, fallback to SQLite (local development or Render fallback).
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Use PostgreSQL on Render
+    # Use PostgreSQL (production on Render, or external DB)
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
-    # Fallback to SQLite for local development
+    # Fallback to SQLite
     IS_RENDER = 'RENDER' in os.environ
     if IS_RENDER:
+        # Render's ephemeral disk - use /opt/render/project/src/data
         RENDER_DATA_DIR = '/opt/render/project/src/data'
         if not os.path.exists(RENDER_DATA_DIR):
             os.makedirs(RENDER_DATA_DIR)
@@ -84,6 +94,7 @@ else:
             }
         }
     else:
+        # Local development SQLite
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',
@@ -91,8 +102,7 @@ else:
             }
         }
 
-
-# Password validation
+# ========== PASSWORD VALIDATION ==========
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -100,42 +110,68 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# Internationalization
+# ========== INTERNATIONALIZATION ==========
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-
 # ========== STATIC FILES (CSS, JavaScript, Images) ==========
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# WhiteNoise compression and caching (great for production)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-
-# ========== SECURITY & SEARCH ENGINE SETTINGS ==========
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
-SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
-
-
-# ========== MEDIA FILES (for uploaded resumes) ==========
+# ========== MEDIA FILES (Uploaded Resumes, etc.) ==========
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
 # ========== PAYSTACK PAYMENT CONFIGURATION ==========
-PAYSTACK_PUBLIC_KEY = 'pk_live_328fbc356bc8296971837ab459f67b94f8f11e89'
-PAYSTACK_SECRET_KEY = 'sk_live_f7cd1d85caea729a7e1230092a226d019a8c35b5'
-PAYSTACK_CALLBACK_URL = 'https://globalgigs-0096.onrender.com/payment/callback/'
+# Loaded strictly from Environment Variables. NEVER hardcode live keys.
+PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY')
+PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY')
+# Callback URL is now dynamic; set a fallback for local testing.
+# In your views, generate the full URL dynamically using request.build_absolute_uri()
 
+PAYSTACK_CALLBACK_URL = os.environ.get(
+    'PAYSTACK_CALLBACK_URL',
+    'https://globalgigs-0096.onrender.com/payment/callback/'
+)
+
+# Raise an error if Paystack keys are missing when DEBUG=False (Production)
+if not DEBUG and (not PAYSTACK_PUBLIC_KEY or not PAYSTACK_SECRET_KEY):
+    raise ValueError("Paystack keys (PUBLIC & SECRET) must be set in production environment!")
 
 # ========== AUTHENTICATION SETTINGS ==========
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard:home'
 LOGOUT_REDIRECT_URL = 'home'
 
-
 # ========== DEFAULT AUTO FIELD ==========
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ========== PRODUCTION SECURITY HEADERS ==========
+# These automatically harden your site when DEBUG=False (on Render)
+if not DEBUG:
+    # Redirect all HTTP traffic to HTTPS
+    SECURE_SSL_REDIRECT = True
+    # Send secure cookies only over HTTPS
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Prevent browsers from guessing MIME types
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # HSTS: Tell browsers to only use HTTPS for 1 year (optional but recommended)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # Referrer policy
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+else:
+    # Development settings (safe for localhost)
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
