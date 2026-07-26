@@ -23,7 +23,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Hosts allowed to serve the application
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'globalgigs-0096.onrender.com').split(',')
 
 # ========== APPLICATION DEFINITION ==========
 INSTALLED_APPS = [
