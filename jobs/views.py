@@ -341,7 +341,7 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (WITH ERROR LOGGING AND PRINT)
+# JOB POSTING & PAYMENT (WITH DEBUG LOGS)
 # ============================================================
 
 def post_job_page(request):
@@ -461,7 +461,7 @@ def initiate_subscription(request):
     if not user_email:
         messages.error(request, "Your account does not have an email address. Please add one in your profile.")
         logger.error(f"User {request.user.id} has no email")
-        return redirect('dashboard:profile')   # ✅ FIX: redirect to profile
+        return redirect('dashboard:profile')
     
     headers = {
         'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
@@ -479,8 +479,9 @@ def initiate_subscription(request):
         }
     }
     
-    # 🐞 DEBUG: Print the plan code to Render logs
-    print(f"🔍 PLAN CODE BEING SENT: {plan_code}")
+    # 🐞 DEBUG – force these to appear in logs
+    print(f"🔍 PLAN CODE BEING SENT: {plan_code}", flush=True)
+    logger.error(f"🔍 PLAN CODE BEING SENT: {plan_code}")
     
     logger.info(f"Sending subscription to Paystack: {data}")
     
@@ -607,7 +608,7 @@ def paystack_webhook(request):
             email = data.get('customer', {}).get('email')
             plan_code = data.get('plan', {}).get('plan_code')
             
-            # ✅ FIXED: define plan_map (was missing)
+            # ✅ plan_map defined correctly
             plan_map = {
                 'PLN_bhm6kvqs59l7ipe': 'starter',
                 'PLN_bq99h747bu6dxti': 'pro',
