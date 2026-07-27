@@ -857,9 +857,9 @@ def create_superuser(request):
         return HttpResponse("Unauthorized", status=403)
     
     from django.contrib.auth.models import User
-    username = 'admin'
-    email = 'admin@example.com'
-    password = 'YourStrongPassword123'
+    username = 'kelly'
+    email = 'wafulakelly45@gmail.com'
+    password = 'root@root'
     
     if not User.objects.filter(username=username).exists():
         User.objects.create_superuser(username, email, password)

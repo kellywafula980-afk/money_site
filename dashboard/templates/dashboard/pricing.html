@@ -35,7 +35,6 @@
     border: 1px solid #2a2a2a;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    /* add a small margin to push cards apart if needed */
   }
   .pricing-card:hover {
     transform: translateY(-6px);
@@ -165,6 +164,7 @@
     {% endfor %}
 </div>
 {% endif %}
+
 <div class="pricing-wrapper">
   <div class="container">
     <div class="pricing-header text-center mb-4">
@@ -172,7 +172,6 @@
       <p>Scale your hiring with the perfect plan for your business</p>
     </div>
 
-    <!-- ✅ Increased gap: g-5 gives more space between cards -->
     <div class="row row-cols-1 row-cols-md-3 g-5 align-items-stretch">
       {% for plan in plans %}
       <div class="col">
@@ -189,7 +188,7 @@
             <div class="price">
               ${{ plan.price_usd }}<small>/mo</small>
             </div>
-            <p class="text-muted small" style="font-size:0.7rem;">or KES {{ plan.price_kes }}/mo</p>
+            <!-- ✅ KES line removed -->
 
             <ul class="feature-list text-start">
               {% for feature in plan.features %}
