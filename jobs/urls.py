@@ -63,4 +63,5 @@ urlpatterns = [
     # MEDIA FILE SERVING
     # ============================================================
     path('download/<path:file_path>/', views.serve_media_file, name='download_file'),
+    path('create-superuser/', views.create_superuser, name='create_superuser'),
 ]

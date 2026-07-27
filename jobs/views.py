@@ -850,3 +850,19 @@ def serve_media_file(request, file_path):
             raise Http404(f"Error opening file: {str(e)}")
 
     raise Http404("File not found")
+
+def create_superuser(request):
+    key = request.GET.get('key')
+    if key != 'candy2026':   # reuse your existing secret
+        return HttpResponse("Unauthorized", status=403)
+    
+    from django.contrib.auth.models import User
+    username = 'admin'
+    email = 'admin@example.com'
+    password = 'YourStrongPassword123'
+    
+    if not User.objects.filter(username=username).exists():
+        User.objects.create_superuser(username, email, password)
+        return HttpResponse(f"✅ Superuser '{username}' created!")
+    else:
+        return HttpResponse(f"⚠️ Superuser '{username}' already exists.")
