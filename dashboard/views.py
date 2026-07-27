@@ -1,3 +1,4 @@
+from .forms import CustomUserCreationForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -159,7 +160,6 @@ def save_job(request, job_id):
             'message': 'Job saved successfully!',
             'saved': True
         })
-
 @login_required
 def profile(request):
     """User profile management"""
@@ -168,9 +168,20 @@ def profile(request):
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
+            # ✅ Save email
+            email = request.POST.get('email')
+            if email:
+                request.user.email = email
+                request.user.save()
+                messages.success(request, f'✅ Email updated to {email}')
+            else:
+                messages.warning(request, 'Email cannot be empty.')
+            
             form.save()
             messages.success(request, '✅ Profile updated successfully!')
             return redirect('dashboard:profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = UserProfileForm(instance=profile)
     
@@ -248,20 +259,18 @@ def dashboard_stats_api(request):
     return JsonResponse(data)
 
 def signup(request):
-    """User registration view"""
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
             messages.success(request, '🎉 Account created successfully! Welcome to GlobalGigs!')
             return redirect('dashboard:home')
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
 
-@login_required
-@require_POST
+
 def review_application(request, application_id):
     """Mark an application as reviewed"""
     application = get_object_or_404(JobApplication, id=application_id, job__posted_by=request.user)

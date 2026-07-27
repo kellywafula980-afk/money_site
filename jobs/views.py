@@ -459,9 +459,9 @@ def initiate_subscription(request):
     
     user_email = request.user.email
     if not user_email:
-        messages.error(request, "Your account does not have an email address.")
+        messages.error(request, "Your account does not have an email address. Please add one in your profile.")
         logger.error(f"User {request.user.id} has no email")
-        return redirect('dashboard:pricing')
+        return redirect('dashboard:profile')   # ✅ FIX: redirect to profile
     
     headers = {
         'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
