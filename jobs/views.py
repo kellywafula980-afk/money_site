@@ -24,7 +24,6 @@ from .models import JobListing, JobApplication, JobCategory
 from .forms import JobApplicationForm, JobPostForm
 from dashboard.models import Subscription
 
-# ✅ Configure logging
 logger = logging.getLogger(__name__)
 
 # ============================================================
@@ -341,7 +340,7 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (WITH DEBUG LOGS)
+# JOB POSTING & PAYMENT (WITH FIX FOR AMOUNT)
 # ============================================================
 
 def post_job_page(request):
@@ -349,7 +348,6 @@ def post_job_page(request):
         messages.error(request, "Please log in to post a job.")
         return redirect('login')
     
-    # Check subscription limits
     try:
         subscription = request.user.subscription
         if not subscription.is_active:
@@ -398,7 +396,7 @@ def initiate_payment(request):
                 'Content-Type': 'application/json',
             }
 
-            amount_in_kobo = 4900  # 4,900 KES (no decimals for KES)
+            amount_in_kobo = 4900
 
             data = {
                 'email': user_email,
@@ -408,7 +406,7 @@ def initiate_payment(request):
                 'metadata': {
                     'job_title': form.cleaned_data['title'],
                     'company': form.cleaned_data['company_name'],
-                    'subscription': False,  # one-time flag
+                    'subscription': False,
                 }
             }
 
@@ -451,10 +449,23 @@ def initiate_subscription(request):
         'enterprise': 'PLN_lthapwkvue428j9',
     }
     
+    # Amounts in kobo (smallest currency unit) – from your plan amounts
+    plan_amounts = {
+        'PLN_bhm6kvqs59l7ipe': 370000,    # 3,700 KES
+        'PLN_bq99h747bu6dxti': 1020000,   # 10,200 KES
+        'PLN_lthapwkvue428j9': 3200000,   # 32,000 KES
+    }
+    
     plan_code = plan_codes.get(plan_id)
     if not plan_code:
         messages.error(request, "Invalid plan selected.")
         logger.error(f"Invalid plan_id: {plan_id}")
+        return redirect('dashboard:pricing')
+    
+    amount = plan_amounts.get(plan_code, 0)
+    if amount == 0:
+        messages.error(request, "Plan amount not configured.")
+        logger.error(f"Amount not found for plan: {plan_code}")
         return redirect('dashboard:pricing')
     
     user_email = request.user.email
@@ -471,6 +482,8 @@ def initiate_subscription(request):
     data = {
         'email': user_email,
         'plan': plan_code,
+        'amount': amount,
+        'currency': 'KES',
         'callback_url': request.build_absolute_uri(reverse('payment_callback')),
         'metadata': {
             'user_id': request.user.id,
@@ -479,7 +492,7 @@ def initiate_subscription(request):
         }
     }
     
-    # 🐞 DEBUG – force these to appear in logs
+    # Debug lines – will appear in Render logs
     print(f"🔍 PLAN CODE BEING SENT: {plan_code}", flush=True)
     logger.error(f"🔍 PLAN CODE BEING SENT: {plan_code}")
     
@@ -533,8 +546,6 @@ def payment_callback(request):
             is_subscription = metadata.get('subscription', False)
             
             if is_subscription:
-                # For local testing without webhooks: manually activate subscription
-                # In production, webhook will do this; we still show success
                 plan_type = metadata.get('plan_type', 'starter')
                 try:
                     subscription = request.user.subscription
@@ -552,7 +563,6 @@ def payment_callback(request):
                 messages.success(request, "✅ Subscription activated! You can now post jobs.")
                 return redirect('dashboard:home')
             else:
-                # One-time payment flow
                 pending_job = request.session.get('pending_job')
                 if pending_job:
                     job = JobListing.objects.create(
@@ -608,7 +618,6 @@ def paystack_webhook(request):
             email = data.get('customer', {}).get('email')
             plan_code = data.get('plan', {}).get('plan_code')
             
-            # ✅ plan_map defined correctly
             plan_map = {
                 'PLN_bhm6kvqs59l7ipe': 'starter',
                 'PLN_bq99h747bu6dxti': 'pro',
