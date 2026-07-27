@@ -341,7 +341,7 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (WITH ERROR LOGGING)
+# JOB POSTING & PAYMENT (WITH ERROR LOGGING AND PRINT)
 # ============================================================
 
 def post_job_page(request):
@@ -478,6 +478,9 @@ def initiate_subscription(request):
             'subscription': True,
         }
     }
+    
+    # 🐞 DEBUG: Print the plan code to Render logs
+    print(f"🔍 PLAN CODE BEING SENT: {plan_code}")
     
     logger.info(f"Sending subscription to Paystack: {data}")
     
