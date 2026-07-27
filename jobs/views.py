@@ -604,6 +604,7 @@ def paystack_webhook(request):
             email = data.get('customer', {}).get('email')
             plan_code = data.get('plan', {}).get('plan_code')
             
+            # ✅ FIXED: define plan_map (was missing)
             plan_map = {
                 'PLN_bhm6kvqs59l7ipe': 'starter',
                 'PLN_bq99h747bu6dxti': 'pro',
