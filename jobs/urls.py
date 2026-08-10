@@ -1,6 +1,5 @@
 from django.urls import path
-from core.views import clean_encoding_endpoint  # adjust if you put it elsewhere
-
+from jobs.views import clean_encoding_endpoint  # ✅ correct
 from . import views
 
 app_name = 'jobs'
