@@ -79,6 +79,11 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
     }
+    # Force UTF-8 client encoding to avoid UnicodeDecodeError
+    # This ensures all text exchanged with PostgreSQL is valid UTF-8.
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c client_encoding=utf8'
+    }
 else:
     # Fallback to SQLite
     IS_RENDER = 'RENDER' in os.environ
