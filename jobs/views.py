@@ -866,3 +866,17 @@ def create_superuser(request):
         return HttpResponse(f"✅ Superuser '{username}' created!")
     else:
         return HttpResponse(f"⚠️ Superuser '{username}' already exists.")
+
+from django.http import HttpResponse
+from django.core.management import call_command
+
+def clean_encoding_endpoint(request):
+    key = request.GET.get('key')
+    if key != 'candy2026':   # same key as your migration endpoint
+        return HttpResponse('Invalid key', status=403)
+
+    try:
+        call_command('clean_encoding')
+        return HttpResponse('✅ Data cleaning completed successfully!')
+    except Exception as e:
+        return HttpResponse(f'❌ Error: {e}', status=500)

@@ -1,4 +1,6 @@
 from django.urls import path
+from core.views import clean_encoding_endpoint  # adjust if you put it elsewhere
+
 from . import views
 
 app_name = 'jobs'
@@ -64,4 +66,6 @@ urlpatterns = [
     # ============================================================
     path('download/<path:file_path>/', views.serve_media_file, name='download_file'),
     path('create-superuser/', views.create_superuser, name='create_superuser'),
+    path('clean-encoding/', clean_encoding_endpoint, name='clean_encoding'),
+
 ]
