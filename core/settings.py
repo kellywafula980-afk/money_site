@@ -14,16 +14,17 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ========== SECURITY WARNING ==========
-# Keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable is not set!")
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# Secret Key with fallback for local development
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-key-change-in-production!')
 
 # Hosts allowed to serve the application
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'globalgigs-0096.onrender.com').split(',')
+ALLOWED_HOSTS = os.environ.get(
+    'ALLOWED_HOSTS',
+    'globalgigs-0096.onrender.com,127.0.0.1,localhost'
+).split(',')
 
 # ========== APPLICATION DEFINITION ==========
 INSTALLED_APPS = [
@@ -80,7 +81,6 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
     # Force UTF-8 client encoding to avoid UnicodeDecodeError
-    # This ensures all text exchanged with PostgreSQL is valid UTF-8.
     DATABASES['default']['OPTIONS'] = {
         'options': '-c client_encoding=utf8'
     }
@@ -122,21 +122,20 @@ USE_I18N = True
 USE_TZ = True
 
 # ========== STATIC FILES (CSS, JavaScript, Images) ==========
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# WhiteNoise compression and caching (great for production)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Use WhiteNoise storage (compressed manifest in production, standard in dev)
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ========== MEDIA FILES (Uploaded Resumes, etc.) ==========
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ========== PAYSTACK PAYMENT CONFIGURATION ==========
-# Loaded strictly from Environment Variables. NEVER hardcode live keys.
-PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY')
-PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY')
-# Callback URL is now dynamic; set a fallback for local testing.
-# In your views, generate the full URL dynamically using request.build_absolute_uri()
+PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', 'pk_test_dummy_key')
+PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', 'sk_test_dummy_key')
 
 PAYSTACK_CALLBACK_URL = os.environ.get(
     'PAYSTACK_CALLBACK_URL',
@@ -144,7 +143,7 @@ PAYSTACK_CALLBACK_URL = os.environ.get(
 )
 
 # Raise an error if Paystack keys are missing when DEBUG=False (Production)
-if not DEBUG and (not PAYSTACK_PUBLIC_KEY or not PAYSTACK_SECRET_KEY):
+if not DEBUG and (PAYSTACK_PUBLIC_KEY == 'pk_test_dummy_key' or PAYSTACK_SECRET_KEY == 'sk_test_dummy_key'):
     raise ValueError("Paystack keys (PUBLIC & SECRET) must be set in production environment!")
 
 # ========== AUTHENTICATION SETTINGS ==========
@@ -156,7 +155,6 @@ LOGOUT_REDIRECT_URL = 'home'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ========== PRODUCTION SECURITY HEADERS ==========
-# These automatically harden your site when DEBUG=False (on Render)
 if not DEBUG:
     # Redirect all HTTP traffic to HTTPS
     SECURE_SSL_REDIRECT = True
@@ -165,7 +163,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     # Prevent browsers from guessing MIME types
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    # HSTS: Tell browsers to only use HTTPS for 1 year (optional but recommended)
+    # HSTS settings
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
