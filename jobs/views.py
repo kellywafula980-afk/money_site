@@ -700,6 +700,23 @@ def paystack_webhook(request):
 # UTILITY ENDPOINTS & MIGRATIONS
 # ============================================================
 
+def create_superuser(request):
+    """Creates a default admin superuser via URL trigger"""
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+
+    username = request.GET.get('username', 'admin')
+    email = request.GET.get('email', 'admin@example.com')
+    password = request.GET.get('password', 'admin1234')
+
+    if User.objects.filter(username=username).exists():
+        return HttpResponse(f"User '{username}' already exists.", status=200)
+
+    User.objects.create_superuser(username=username, email=email, password=password)
+    return HttpResponse(f"✅ Superuser '{username}' created successfully!")
+
+
 def run_migrations(request):
     """
     Executes database migrations on both Default (Render) and Supabase databases.
