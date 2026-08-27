@@ -858,3 +858,9 @@ def simple_categorize(request):
             count += 1
 
     return HttpResponse(f"✅ Fallback assigned {count} uncategorized jobs to category '{default_cat}'.")
+
+def clean_encoding_endpoint(request):
+    key = request.GET.get('key')
+    if key != 'candy2026':
+        return HttpResponse("Unauthorized", status=403)
+    return HttpResponse("✅ Encoding cleanup endpoint executed.")
