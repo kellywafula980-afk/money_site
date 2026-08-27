@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import io
 import hmac
 import hashlib
 import logging
@@ -340,7 +341,7 @@ def category_debug(request):
 
 
 # ============================================================
-# JOB POSTING & PAYMENT (WITH FIX FOR AMOUNT)
+# JOB POSTING & PAYMENT
 # ============================================================
 
 def post_job_page(request):
@@ -370,7 +371,7 @@ def post_job_page(request):
 
 
 def initiate_payment(request):
-    """One-time payment for job posting (kept for compatibility)"""
+    """One-time payment for job posting"""
     if request.method == 'POST':
         form = JobPostForm(request.POST)
         if form.is_valid():
@@ -437,19 +438,15 @@ def initiate_payment(request):
 
 @login_required
 def initiate_subscription(request):
-    """
-    Initialize Paystack subscription (recurring) using a plan code.
-    """
+    """Initialize Paystack subscription (recurring) using a plan code."""
     plan_id = request.session.get('selected_plan', 'starter')
     
-    # REAL PLAN CODES FROM PAYSTACK DASHBOARD
     plan_codes = {
         'starter': 'PLN_bhm6kvqs59l7ipe',
         'pro': 'PLN_bq99h747bu6dxti',
         'enterprise': 'PLN_lthapwkvue428j9',
     }
     
-    # Amounts in kobo (smallest currency unit) – from your plan amounts
     plan_amounts = {
         'PLN_bhm6kvqs59l7ipe': 370000,    # 3,700 KES
         'PLN_bq99h747bu6dxti': 1020000,   # 10,200 KES
@@ -492,12 +489,6 @@ def initiate_subscription(request):
         }
     }
     
-    # Debug lines – will appear in Render logs
-    print(f"🔍 PLAN CODE BEING SENT: {plan_code}", flush=True)
-    logger.error(f"🔍 PLAN CODE BEING SENT: {plan_code}")
-    
-    logger.info(f"Sending subscription to Paystack: {data}")
-    
     try:
         import requests as req
         response = req.post(
@@ -507,7 +498,6 @@ def initiate_subscription(request):
             timeout=30
         )
         response_data = response.json()
-        logger.error(f"Paystack subscription response: {response_data}")
         
         if response_data.get('status'):
             request.session['paystack_ref'] = response_data['data']['reference']
@@ -602,16 +592,13 @@ def payment_callback(request):
 @csrf_exempt
 @require_POST
 def paystack_webhook(request):
-    """
-    Handle Paystack webhook events for subscriptions.
-    """
+    """Handle Paystack webhook events for subscriptions."""
     try:
         payload = json.loads(request.body)
         event = payload.get('event')
         data = payload.get('data')
         
         logger.info(f"Webhook event: {event}")
-        logger.info(f"Webhook data: {data}")
         
         if event == 'subscription.create':
             subscription_code = data.get('subscription_code')
@@ -696,19 +683,29 @@ def paystack_webhook(request):
 
 
 # ============================================================
-# UTILITY ENDPOINTS
+# UTILITY ENDPOINTS & MIGRATIONS
 # ============================================================
 
 def run_migrations(request):
+    """
+    Executes database migrations on both Default (Render) and Supabase databases.
+    Triggers via web endpoint URL.
+    """
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
 
+    out = io.StringIO()
     try:
-        call_command('migrate')
-        return HttpResponse("✅ Migrations completed successfully!")
+        out.write("--- MIGRATING DEFAULT DATABASE (Render) ---\n")
+        call_command('migrate', database='default', stdout=out)
+        
+        out.write("\n--- MIGRATING SUPABASE DATABASE ---\n")
+        call_command('migrate', database='supabase', stdout=out)
+        
+        return HttpResponse(f"<pre>✅ Migrations Completed Successfully:\n\n{out.getvalue()}</pre>")
     except Exception as e:
-        return HttpResponse(f"❌ Error: {str(e)}", status=500)
+        return HttpResponse(f"<pre>❌ Error running migrations:\n{str(e)}</pre>", status=500)
 
 
 def create_categories_production(request):
@@ -815,68 +812,18 @@ def simple_categorize(request):
     key = request.GET.get('key')
     if key != 'candy2026':
         return HttpResponse("Unauthorized", status=403)
-    return force_assign_categories(request)
 
+    uncategorized_jobs = JobListing.objects.filter(category__isnull=True)
+    count = 0
 
-# ============================================================
-# MEDIA FILE SERVING
-# ============================================================
+    default_cat = JobCategory.objects.filter(name__iexact='Technology').first()
+    if not default_cat:
+        default_cat = JobCategory.objects.first()
 
-def serve_media_file(request, file_path):
-    file_path = unquote(file_path)
-    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+    if default_cat:
+        for job in uncategorized_jobs:
+            job.category = default_cat
+            job.save()
+            count += 1
 
-    if not full_path.startswith(os.path.abspath(settings.MEDIA_ROOT)):
-        raise Http404("Access denied")
-
-    if os.path.exists(full_path) and os.path.isfile(full_path):
-        content_type = 'application/octet-stream'
-        if full_path.endswith('.pdf'):
-            content_type = 'application/pdf'
-        elif full_path.endswith('.doc'):
-            content_type = 'application/msword'
-        elif full_path.endswith('.docx'):
-            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        elif full_path.endswith('.jpg') or full_path.endswith('.jpeg'):
-            content_type = 'image/jpeg'
-        elif full_path.endswith('.png'):
-            content_type = 'image/png'
-
-        try:
-            response = FileResponse(open(full_path, 'rb'), content_type=content_type)
-            response['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
-            return response
-        except Exception as e:
-            raise Http404(f"Error opening file: {str(e)}")
-
-    raise Http404("File not found")
-
-def create_superuser(request):
-    key = request.GET.get('key')
-    if key != 'candy2026':   # reuse your existing secret
-        return HttpResponse("Unauthorized", status=403)
-    
-    from django.contrib.auth.models import User
-    username = 'kelly'
-    email = 'wafulakelly45@gmail.com'
-    password = 'root@root'
-    
-    if not User.objects.filter(username=username).exists():
-        User.objects.create_superuser(username, email, password)
-        return HttpResponse(f"✅ Superuser '{username}' created!")
-    else:
-        return HttpResponse(f"⚠️ Superuser '{username}' already exists.")
-
-from django.http import HttpResponse
-from django.core.management import call_command
-
-def clean_encoding_endpoint(request):
-    key = request.GET.get('key')
-    if key != 'candy2026':   # same key as your migration endpoint
-        return HttpResponse('Invalid key', status=403)
-
-    try:
-        call_command('clean_encoding')
-        return HttpResponse('✅ Data cleaning completed successfully!')
-    except Exception as e:
-        return HttpResponse(f'❌ Error: {e}', status=500)
+    return HttpResponse(f"✅ Fallback assigned {count} uncategorized jobs to category '{default_cat}'.")

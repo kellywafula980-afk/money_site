@@ -6,7 +6,7 @@ import dj_database_url
 from pathlib import Path
 
 # ========== LOAD ENVIRONMENT VARIABLES ==========
-# Load .env file for local development (does nothing on Render)
+# Load .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -14,10 +14,8 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ========== SECURITY WARNING ==========
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# Secret Key with fallback for local development
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-key-change-in-production!')
 
 # Hosts allowed to serve the application
@@ -42,7 +40,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # For serving static files efficiently
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -70,46 +68,42 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# ========== DATABASE CONFIGURATION ==========
-# Render provides DATABASE_URL for PostgreSQL.
-# If not present, fallback to SQLite (local development or Render fallback).
-DATABASE_URL = os.environ.get('DATABASE_URL')
+# ========== DUAL DATABASE CONFIGURATION ==========
+# Render PostgreSQL (Default DB)
+RENDER_DB_URL = os.environ.get('DATABASE_URL')
 
-if DATABASE_URL:
-    # Use PostgreSQL (production on Render, or external DB)
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True
-        )
+# Supabase PostgreSQL (Secondary DB)
+SUPABASE_DB_URL = os.environ.get('SUPABASE_DATABASE_URL')
+
+DATABASES = {
+    # Primary / Render Database
+    'default': dj_database_url.config(
+        default=RENDER_DB_URL,
+        conn_max_age=600,
+        ssl_require=True
+    ) if RENDER_DB_URL else {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
+
+    # Supabase Database
+    'supabase': dj_database_url.config(
+        default=SUPABASE_DB_URL,
+        conn_max_age=600,
+        ssl_require=True
+    ) if SUPABASE_DB_URL else {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db_supabase.sqlite3',
     }
-    # Force UTF-8 client encoding to prevent UnicodeDecodeError crashes
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c client_encoding=utf8'
-    }
-else:
-    # Fallback to SQLite
-    IS_RENDER = 'RENDER' in os.environ
-    if IS_RENDER:
-        # Render's ephemeral disk - use /opt/render/project/src/data
-        RENDER_DATA_DIR = '/opt/render/project/src/data'
-        if not os.path.exists(RENDER_DATA_DIR):
-            os.makedirs(RENDER_DATA_DIR)
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': os.path.join(RENDER_DATA_DIR, 'db.sqlite3'),
-            }
-        }
-    else:
-        # Local development SQLite
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
-        }
+}
+
+# UTF-8 client encoding fix for all PostgreSQL connections
+for db_key in DATABASES:
+    if 'postgresql' in DATABASES[db_key].get('ENGINE', ''):
+        DATABASES[db_key].setdefault('OPTIONS', {})['options'] = '-c client_encoding=utf8'
+
+# Enable Multi-Database Router
+DATABASE_ROUTERS = ['core.db_router.DualDatabaseRouter']
 
 # ========== PASSWORD VALIDATION ==========
 AUTH_PASSWORD_VALIDATORS = [
@@ -129,15 +123,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Use WhiteNoise storage (compressed manifest in production, standard in dev)
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ========== MEDIA FILES (Uploaded Resumes, etc.) ==========
+# ========== MEDIA FILES ==========
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# ========== PAYSTACK PAYMENT CONFIGURATION ==========
+# ========== PAYSTACK CONFIGURATION ==========
 PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', 'pk_test_dummy_key')
 PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', 'sk_test_dummy_key')
 
@@ -146,7 +139,6 @@ PAYSTACK_CALLBACK_URL = os.environ.get(
     'https://globalgigs-0096.onrender.com/payment/callback/'
 )
 
-# Raise an error if Paystack keys are missing when DEBUG=False (Production)
 if not DEBUG and (PAYSTACK_PUBLIC_KEY == 'pk_test_dummy_key' or PAYSTACK_SECRET_KEY == 'sk_test_dummy_key'):
     raise ValueError("Paystack keys (PUBLIC & SECRET) must be set in production environment!")
 
@@ -160,21 +152,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ========== PRODUCTION SECURITY HEADERS ==========
 if not DEBUG:
-    # Redirect all HTTP traffic to HTTPS
     SECURE_SSL_REDIRECT = True
-    # Send secure cookies only over HTTPS
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # Prevent browsers from guessing MIME types
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    # HSTS settings
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    # Referrer policy
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 else:
-    # Development settings (safe for localhost)
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False

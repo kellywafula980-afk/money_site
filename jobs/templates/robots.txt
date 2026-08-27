@@ -1,4 +1,5 @@
 User-agent: *
-Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
 
 Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml
