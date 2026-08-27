@@ -28,7 +28,7 @@ from dashboard.models import Subscription
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# ROBOTS.TXT
+# ROBOTS.TXT & MEDIA FILE HANDLING
 # ============================================================
 
 def robots_txt(request):
@@ -37,6 +37,20 @@ Allow: /
 
 Sitemap: https://globalgigs-0096.onrender.com/sitemap.xml"""
     return HttpResponse(content, content_type='text/plain')
+
+
+def serve_media_file(request, file_path):
+    """Safely serve media or uploaded files, e.g., resumes/downloads"""
+    full_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, file_path))
+    
+    # Security check: Prevent directory traversal attacks
+    if not full_path.startswith(os.path.abspath(settings.MEDIA_ROOT)):
+        raise Http404("Invalid file path")
+        
+    if os.path.exists(full_path) and os.path.isfile(full_path):
+        return FileResponse(open(full_path, 'rb'), as_attachment=True)
+    
+    raise Http404("File not found")
 
 
 # ============================================================
